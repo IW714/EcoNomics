@@ -1,6 +1,5 @@
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from .services.auth import verify_token
 
 app = FastAPI()
 
@@ -22,8 +21,3 @@ app.add_middleware(
 @app.get("/")
 def read_root():
     return {"Hello": "World"}
-
-# Ex of protected route
-@app.get("/protected")
-def protected_route(user=Depends(verify_token)):
-    return {"message": f"Hello, {user['uid']}"}
