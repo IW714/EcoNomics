@@ -1,11 +1,14 @@
+import { Routes, Route } from 'react-router-dom'
+import LandingPage from './pages/LandingPage'
+import HomePage from './pages/HomePage'
 import './App.css'
-import ThreeDText from './components/example'
 
 function App() {
   return (
-    <>
-      <ThreeDText />
-    </>
+    <Routes>
+      <Route path="/" element={<LandingPage />} />
+      <Route path="/home" element={<HomePage />} />
+    </Routes>
   )
 }
 
