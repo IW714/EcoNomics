@@ -1,4 +1,4 @@
-metadata: {'mean_wind_speed': '9.17 (IEC II - Medium Wind)', 'lat': '51.626', 'lon': '1.496', 'height': '100', 'date_from': '2019-01-01', 'date_to': '2019-01-31', 'format': 'csv'}
+metadata: {'mean_wind_speed': '9.17 (IEC II - Medium Wind)', 'lat': '51.626', 'lon': '1.496', 'height': '100.0', 'date_from': '2019-01-01', 'date_to': '2019-01-31', 'format': 'csv'}
 
 datetime,wind_speed
 2019-01-01 00:00:00,8.47
