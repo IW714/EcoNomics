@@ -29,7 +29,7 @@ def get_carbon_intensity(lat: float, lon: float) -> float:
     params = {
         "lat": lat,
         "lon": lon
-    } # TODO: Double check the params
+    }
 
     response = requests.get(url, headers=headers, params=params)
     if response.status_code != 200:
@@ -40,4 +40,4 @@ def get_carbon_intensity(lat: float, lon: float) -> float:
     if carbon_intensity is None:
         raise HTTPException(status_code=500, detail="Carbon intensity data unavailable.")
 
-    return carbon_intensity  # in gCO2eq/kWh
+    return carbon_intensity  # in gCO2eq/kWh TODO: This may need to be double checked

@@ -57,10 +57,13 @@ def calculate_solar_potential(request: SolarAssessmentRequest):
         # Extract necessary fields from PVWatts output 
         ac_annual = pv_outputs.get("ac_annual") # kWhac
         solrad_annual = pv_outputs.get("solrad_annual") # kWh/m²/day
-        capacity_factor = pv_outputs.get("capacity_factor") / 100 # AC-to-DC ratio
+        capacity_factor_percentage = pv_outputs.get("capacity_factor") # AC-to-DC ratio
 
-        if ac_annual is None or solrad_annual is None or capacity_factor is None:
+        if ac_annual is None or solrad_annual is None or capacity_factor_percentage is None:
             raise HTTPException(status_code=500, detail="Incomplete PVWatts data received.")
+        
+        capacity_factor = capacity_factor_percentage / 100  # Convert percentage to ratio
+        logger.info(f"Capacity Factor (Ratio): {capacity_factor}")      
 
         # Fetch carbon intensity
         carbon_intensity = get_carbon_intensity(lat, lon) # gCO2eq/kWh
@@ -84,11 +87,13 @@ def calculate_solar_potential(request: SolarAssessmentRequest):
         panel_efficiency = 0.18  # Typically range from 15% to 20%
 
         # Calculate effective efficiency
-        effective_efficiency = system_efficiency * panel_efficiency
+        # effective_efficiency = system_efficiency * panel_efficiency
 
         # Calculate panel area
         dc_annual = ac_annual / system_efficiency
-        panel_area = calculate_panel_area(dc_annual, solrad_annual, effective_efficiency)
+        logger.info(f"DC Annual Output: {dc_annual} kWhdc")
+        panel_area = calculate_panel_area(dc_annual, solrad_annual, panel_efficiency)
+        logger.info(f"Required Panel Area: {panel_area} m²")
 
         # Calculate annual cost savings
         annual_cost_savings = calculate_cost_savings(ac_annual, energy_price)
@@ -96,7 +101,7 @@ def calculate_solar_potential(request: SolarAssessmentRequest):
         # Calculate ROI
         # Assuming initial_cost is based on system_capacity. This can be made more precise with detailed inputs.
         # Example: $4,000 per kW installed
-        initial_cost = request.pvwatts.system_capacity * 4000  # USD
+        initial_cost = request.pvwatts.system_capacity * 2500  # USD TODO: might need to allow users to adjust initial costs
         roi_years = calculate_roi(initial_cost, annual_cost_savings)
 
         # Calculate CO2 reduction

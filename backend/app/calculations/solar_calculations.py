@@ -6,13 +6,13 @@ logging.basicConfig(level=logging.DEBUG,
 
 logger = logging.getLogger(__name__)
 
-def calculate_panel_area(dc_annual: float, solrad_annual: float, system_efficiency: float) -> float:
+def calculate_panel_area(dc_annual: float, solrad_annual: float, panel_efficiency: float) -> float:
     """
-    Calculates the required panel area based on DC annual output, solar radiation, and system efficiency.
+    Calculates the required panel area based on DC annual output, solar radiation, and panel efficiency.
 
     :param dc_annual: Annual DC output (kWhdc)
-    :param solrad_annual: Annual solar radiation (kWh/m²/day)
-    :param system_efficiency: System efficiency (e.g., 0.18 for 18%)
+    :param solrad_annual: Average daily solar radiation (kWh/m²/day)
+    :param panel_efficiency: Panel efficiency (e.g., 0.18 for 18%)
     :return: Required panel area in m²
     """
     # Convert solrad from kWh/m²/day to kWh/m²/year
@@ -21,9 +21,10 @@ def calculate_panel_area(dc_annual: float, solrad_annual: float, system_efficien
     
     if annual_solar_radiation <= 0:
         raise ValueError("Annual solar radiation must be greater than 0.")
-    panel_area = dc_annual / (annual_solar_radiation * system_efficiency)
-
+    
+    panel_area = dc_annual / (annual_solar_radiation * panel_efficiency)
     logger.debug(f"Calculated Panel Area: {panel_area} m²")
+    
     return panel_area
 
 def calculate_cost_savings(ac_annual: float, energy_price: float) -> float:
