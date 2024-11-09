@@ -10,6 +10,7 @@ from app.utils.constants import CDS_API_URL
 
 # Load environment variables from .env file
 load_dotenv()
+cdsapi_key = os.getenv("CDSAPI_KEY")
 
 def get_bounding_box(lat, lon, buffer_deg=0.25):
     north = min(lat + buffer_deg, 90)
@@ -19,12 +20,7 @@ def get_bounding_box(lat, lon, buffer_deg=0.25):
     return [north, west, south, east]
 
 def fetch_data(lat, lon, buffer_deg, year, month, day, output_dir='data/'):
-    # Get the CDS API URL and key from environment variables
-    cdsapi_url = CDS_API_URL
-    cdsapi_key = os.getenv("CDSAPI_KEY")
-
-    # Initialize the CDS API client with custom URL and key
-    c = cdsapi.Client(url=cdsapi_url, key=cdsapi_key)
+    c = cdsapi.Client(url=CDS_API_URL, key=cdsapi_key)
     
     area = get_bounding_box(lat, lon, buffer_deg)
     print(f"Bounding Box: North={area[0]}, West={area[1]}, South={area[2]}, East={area[3]}")
@@ -59,19 +55,9 @@ def fetch_data(lat, lon, buffer_deg, year, month, day, output_dir='data/'):
         print(f"Data retrieval successful. File saved as '{output_file}'.")
     except Exception as e:
         print(f"Data retrieval failed: {e}")
+        raise
 
-def main():
-    if len(sys.argv) != 6:
-        print("Usage: fetch_era5_data.py <lat> <lon> <height> <date_from> <date_to>")
-        sys.exit(1)
-
-    lat = float(sys.argv[1])
-    lon = float(sys.argv[2])
-    date_from = sys.argv[4]
+def main(lat, lon, height, date_from, date_to):
     year, month, day = date_from.split('-')
-
     fetch_data(lat, lon, 0.25, year, month, day)
     print("ERA5 Data Retrieval Completed.")
-
-if __name__ == "__main__":
-    main()

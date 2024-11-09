@@ -1,5 +1,7 @@
-from fastapi import FastAPI, HTTPException, Depends
+import math
+from fastapi import FastAPI, HTTPException, Depends, logger
 from fastapi.middleware.cors import CORSMiddleware
+import pandas as pd
 from pydantic import BaseModel
 from app.models.solar_assessment import SolarAssessmentRequest, SolarAssessmentResponse
 from app.services.electricity_map import get_carbon_intensity
@@ -15,9 +17,27 @@ from app.utils.constants import DEFAULT_EMISSION_FACTOR
 import os
 import logging
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+from app.models.wind import WindDataRequest, WindDataResponse
+from app.services.wind.calculate import merge_and_calculate_power
+from app.services.wind.calculate.calculate_air_density import calculate_air_density, calculate_air_density_from_nc
+from app.services.wind.calculate.calculate_capacity_factor import calculate_capacity_factor, calculate_capacity_factor_from_csv
+from app.services.wind.fetch import fetch_era5_data, fetch_wind_data
+
+# Set up logger
+logger = logging.getLogger("wind_data_api")
+logger.setLevel(logging.INFO)
+
+# Create handlers
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.INFO)
+
+# Create formatters and add to handlers
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+console_handler.setFormatter(formatter)
+
+# Add handlers to logger
+logger.addHandler(console_handler)
+
 
 app = FastAPI(title="Renewable Energy Assessment API")
 
@@ -38,6 +58,7 @@ app.add_middleware(
 @app.get("/")
 def read_root():
     return {"Hello": "World"}
+
 
 @app.post("/calculate_solar_potential", response_model=SolarAssessmentResponse)
 def calculate_solar_potential(request: SolarAssessmentRequest):
@@ -127,9 +148,103 @@ def calculate_solar_potential(request: SolarAssessmentRequest):
         raise he
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
-
-
-
     
+    # Issue that needs to be resolved is that there are some areas in which
+    # the wind data does not exist# Threshold in kilometers for significant location change
     
+LOCATION_THRESHOLD_KM = 50
+LAST_LOCATION_FILE = 'data/last_location.csv'
+
+def haversine(lat1, lon1, lat2, lon2):
+    """
+    Calculate the great-circle distance between two points on Earth using the Haversine formula.
+    Returns the distance in kilometers.
+    """
+    R = 6371  # Radius of Earth in kilometers
+    dlat = math.radians(lat2 - lat1)
+    dlon = math.radians(lon2 - lon1)
+    a = math.sin(dlat / 2) ** 2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2) ** 2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    return R * c
+
+def location_has_changed(lat, lon):
+    """
+    Check if the location has changed beyond the defined threshold.
+    """
+    if os.path.exists(LAST_LOCATION_FILE):
+        last_data = pd.read_csv(LAST_LOCATION_FILE)
+        last_lat, last_lon = last_data.iloc[0]['latitude'], last_data.iloc[0]['longitude']
+        distance = haversine(last_lat, last_lon, lat, lon)
+        return distance > LOCATION_THRESHOLD_KM
+    return True  # No previous data, so treat as changed
+
+@app.post("/process_wind_data", response_model=WindDataResponse)
+def process_wind_data(request: WindDataRequest):
+    """
+    Processes wind data based on the provided parameters and returns the results.
+    """
+    try:
+        # Check if location change exceeds threshold
+        if not location_has_changed(request.lat, request.lon):
+            # Location has not changed significantly; load previous results if available
+            merged_power_file = 'data/merged_power_data.csv'
+            capacity_factor_file = 'data/capacity_factor.txt'
+            
+            if os.path.exists(merged_power_file) and os.path.exists(capacity_factor_file):
+                df_power = pd.read_csv(merged_power_file)
+                total_energy = df_power['energy_kwh'].sum()
+
+                with open(capacity_factor_file, 'r') as f:
+                    capacity_factor = float(f.read().split(":")[1].strip().strip('%'))
+
+                # Return cached response
+                return WindDataResponse(
+                    total_energy_kwh=total_energy,
+                    capacity_factor_percentage=capacity_factor,
+                    message="Loaded previous results as location has not changed significantly."
+                )
+            else:
+                raise HTTPException(status_code=500, detail="Previous results not found.")
+
+        # Step 1: Fetch ERA5 Data
+        fetch_era5_data.main(request.lat, request.lon, request.height, request.date_from, request.date_to)
+
+        # Step 2: Calculate Air Density
+        calculate_air_density_from_nc()
+
+        # Step 3: Fetch Wind Data
+        fetch_wind_data.main(request.lat, request.lon, request.height, request.date_from, request.date_to)
+
+        # Step 4: Merge and Calculate Power
+        merge_and_calculate_power.main()
+
+        # Step 5: Calculate Capacity Factor
+        capacity_factor = calculate_capacity_factor_from_csv()
+
+        # Step 6: Calculate Total Energy Generated
+        merged_power_file = 'data/merged_power_data.csv'
+        if not os.path.exists(merged_power_file):
+            raise HTTPException(status_code=500, detail="Merged power data file not found.")
+
+        df_power = pd.read_csv(merged_power_file)
+        total_energy = df_power['energy_kwh'].sum()
+
+        # Save the new location and response data for future reference
+        pd.DataFrame({'latitude': [request.lat], 'longitude': [request.lon]}).to_csv(LAST_LOCATION_FILE, index=False)
+        
+        with open('data/capacity_factor.txt', 'w') as f:
+            f.write(f"Capacity Factor: {capacity_factor:.2f}%\n")
+
+        # Prepare response
+        response = WindDataResponse(
+            total_energy_kwh=total_energy,
+            capacity_factor_percentage=capacity_factor,
+            message="Wind data processing completed successfully."
+        )
+
+        return response
+
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

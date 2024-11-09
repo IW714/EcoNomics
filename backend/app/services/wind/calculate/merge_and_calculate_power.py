@@ -1,3 +1,4 @@
+import sys
 import pandas as pd
 import numpy as np
 import os
@@ -34,28 +35,47 @@ def apply_power_curve(wind_speed, air_density, rotor_radius=50, rated_power=2000
     else:
         return rated_power  # Rated power output above rated speed
 
-def merge_and_calculate_power(wind_data_file, air_density_file, output_file):
+def merge_and_calculate_power(wind_data_file='data/wind_data.csv',
+                              air_density_file='data/air_density_january_2019.csv',
+                              output_file='data/merged_power_data.csv',
+                              rotor_radius=50,
+                              rated_power=2000,
+                              Cp=0.4):
     """
-    Merge wind speed and use mean air density data, then calculate power and energy output.
+    Merge wind speed and air density data, then calculate power and energy output.
 
     Parameters:
     - wind_data_file (str): Path to the CSV file containing wind speed data.
     - air_density_file (str): Path to the CSV file containing air density data.
     - output_file (str): Path to save the output CSV file with calculated power and energy.
+    - rotor_radius (float): Radius of the turbine rotor in meters.
+    - rated_power (float): Rated power output of the turbine in kW.
+    - Cp (float): Power coefficient representing turbine efficiency.
     """
     # Load the wind data
+    if not os.path.exists(wind_data_file):
+        print(f"Error: Wind data file '{wind_data_file}' not found.")
+        raise FileNotFoundError(f"Wind data file '{wind_data_file}' not found.")
+
     df_wind = pd.read_csv(wind_data_file, parse_dates=['datetime'])
-    
+
     # Load air density data and calculate mean air density
+    if not os.path.exists(air_density_file):
+        print(f"Error: Air density file '{air_density_file}' not found.")
+        raise FileNotFoundError(f"Air density file '{air_density_file}' not found.")
+
     df_air_density = pd.read_csv(air_density_file, parse_dates=['datetime'])
     mean_air_density = df_air_density['air_density'].mean()
     print(f"Using mean air density: {mean_air_density:.4f} kg/m³")
 
     # Apply the power curve calculation using the mean air density for each row
     df_wind['power_kw'] = df_wind['wind_speed'].apply(
-        lambda wind_speed: apply_power_curve(
-            wind_speed=wind_speed,
-            air_density=mean_air_density
+        lambda ws: apply_power_curve(
+            wind_speed=ws,
+            air_density=mean_air_density,
+            rotor_radius=rotor_radius,
+            rated_power=rated_power,
+            Cp=Cp
         )
     )
 
@@ -63,38 +83,21 @@ def merge_and_calculate_power(wind_data_file, air_density_file, output_file):
     df_wind['energy_kwh'] = df_wind['power_kw']  # kW * 1 hour = kWh
 
     # Save the data with calculated power and energy output to a new CSV file
-    df_wind.to_csv(output_file, index=False)
-    print(f"Data successfully saved to '{output_file}'.")
-
-def calculate_total_energy(output_file):
-    """
-    Calculate the total energy generated from the merged data file.
-    """
-    df = pd.read_csv(output_file)
-    # Sum the energy_kwh column to get the total energy generated over the period
-    total_energy = df['energy_kwh'].sum()
-    print(f"Total Energy Generated: {total_energy:.2f} kWh")
+    try:
+        os.makedirs(os.path.dirname(output_file), exist_ok=True)  # Ensure the data directory exists
+        df_wind.to_csv(output_file, index=False)
+        print(f"Data successfully saved to '{output_file}'.")
+    except Exception as e:
+        print(f"Failed to save merged power data to CSV: {e}")
+        raise
 
 def main():
-    # File paths for input wind and air density data, and output for merged results
     wind_data_file = 'data/wind_data.csv'
     air_density_file = 'data/air_density_january_2019.csv'
     output_file = 'data/merged_power_data.csv'
 
-    # Check if the required input files exist
-    if not os.path.exists(wind_data_file):
-        print(f"Error: Wind data file '{wind_data_file}' not found.")
-        return
-    if not os.path.exists(air_density_file):
-        print(f"Error: Air density file '{air_density_file}' not found.")
-        return
-
-    # Perform data merging and power calculation
     merge_and_calculate_power(wind_data_file, air_density_file, output_file)
     print("Merge and power calculation completed.")
-
-    # Calculate and display the total energy generated
-    calculate_total_energy(output_file)
 
 if __name__ == "__main__":
     main()

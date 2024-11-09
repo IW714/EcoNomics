@@ -1,4 +1,6 @@
+import sys
 import pandas as pd
+import os
 
 def calculate_capacity_factor(df, rated_power):
     """
@@ -27,19 +29,49 @@ def calculate_capacity_factor(df, rated_power):
     capacity_factor = (actual_energy_generated / total_possible_energy) * 100
     return capacity_factor
 
-def main():
-    # Load the data from the merged CSV file which contains energy output data
-    # The 'datetime' column is parsed as dates for any time-based calculations if needed
-    df = pd.read_csv('data/merged_power_data.csv', parse_dates=['datetime'])
+def calculate_capacity_factor_from_csv(merged_power_file='data/merged_power_data.csv',
+                                      rated_power=2000,
+                                      output_file='data/capacity_factor.txt'):
+    """
+    Calculate the capacity factor from the merged power data and save it to a file.
 
-    # Define the rated power of the wind turbine (in kW)
-    rated_power = 2000  # This is a 2 MW turbine
+    Parameters:
+    - merged_power_file (str): Path to the CSV file containing merged power data.
+    - rated_power (float): Rated power of the turbine in kW.
+    - output_file (str): Path to save the capacity factor.
+    """
+    if not os.path.exists(merged_power_file):
+        print(f"Error: Merged power data file '{merged_power_file}' not found.")
+        raise FileNotFoundError(f"Merged power data file '{merged_power_file}' not found.")
 
-    # Calculate the capacity factor based on actual energy output and maximum possible output
+    try:
+        df = pd.read_csv(merged_power_file, parse_dates=['datetime'])
+    except Exception as e:
+        print(f"Error: Failed to read merged power data CSV: {e}")
+        raise
+
     capacity_factor = calculate_capacity_factor(df, rated_power)
-
-    # Print the capacity factor with two decimal precision
     print(f"Capacity Factor: {capacity_factor:.2f}%")
+
+    # Save the capacity factor to a file
+    try:
+        os.makedirs(os.path.dirname(output_file), exist_ok=True)
+        with open(output_file, 'w') as f:
+            f.write(f"Capacity Factor: {capacity_factor:.2f}%\n")
+        print(f"Capacity factor successfully saved to '{output_file}'.")
+    except Exception as e:
+        print(f"Failed to save capacity factor to file: {e}")
+        raise
+
+    return capacity_factor  # Ensure the function returns the calculated value
+
+def main():
+    merged_power_file = 'data/merged_power_data.csv'
+    rated_power = 2000  # kW, adjust as needed
+    output_file = 'data/capacity_factor.txt'
+
+    calculate_capacity_factor_from_csv(merged_power_file, rated_power, output_file)
+    print("Capacity Factor Calculation Script Completed.")
 
 if __name__ == "__main__":
     main()

@@ -5,9 +5,10 @@ import os
 from datetime import datetime
 from io import StringIO
 
-def fetch_wind_data(lat, lon, height, date_from, date_to, output_file):
+
+def fetch_wind_data(lat, lon, height, date_from, date_to, output_file='data/wind_data.csv'):
     """
-    Retrieve wind speed data from a specified API and save it to a CSV file.
+    Retrieve wind speed data from the Wind Atlas API and save it to a CSV file.
 
     Parameters:
     - lat (float): Latitude of the location.
@@ -17,9 +18,8 @@ def fetch_wind_data(lat, lon, height, date_from, date_to, output_file):
     - date_to (str): End date in 'YYYY-MM-DD' format.
     - output_file (str): Name of the output CSV file.
     """
-    # Construct the API URL with parameters for location, height, and date range
     url = f"http://windatlas.xyz/api/wind/?lat={lat}&lon={lon}&height={height}&date_from={date_from}&date_to={date_to}"
-    
+
     try:
         print(f"Sending request to Wind Atlas API for dates {date_from} to {date_to}...")
         
@@ -50,13 +50,19 @@ def fetch_wind_data(lat, lon, height, date_from, date_to, output_file):
 
     # Attempt to save the DataFrame to a CSV file
     try:
+        os.makedirs(os.path.dirname(output_file), exist_ok=True)  # Ensure the data directory exists
         df.to_csv(output_file, index=False)
         print(f"Wind data successfully saved to '{output_file}'.")
     except Exception as e:
         print(f"Failed to save wind data to CSV: {e}")
         raise
 
-def main():
+def main(lat, lon, height, date_from, date_to):
+    output_file = 'data/wind_data.csv'
+    fetch_wind_data(lat, lon, height, date_from, date_to, output_file)
+    print("Wind Data Retrieval Script Completed.")
+
+if __name__ == "__main__":
     if len(sys.argv) != 6:
         print("Usage: fetch_wind_data.py <lat> <lon> <height> <date_from> <date_to>")
         sys.exit(1)
@@ -66,10 +72,5 @@ def main():
     height = int(sys.argv[3])
     date_from = sys.argv[4]
     date_to = sys.argv[5]
-    output_file = 'data/wind_data.csv'
 
-    fetch_wind_data(lat, lon, height, date_from, date_to, output_file)
-    print("Wind Data Retrieval Script Completed.")
-
-if __name__ == "__main__":
-    main()
+    main(lat, lon, height, date_from, date_to)

@@ -9,3 +9,6 @@ NREL_UTILITY_RATES_URL = "https://developer.nrel.gov/api/utility_rates/v3.json"
 
 # Default Emission Factor (kg CO2/kWh)
 DEFAULT_EMISSION_FACTOR = 0.5
+
+CDS_API_URL="https://cds.climate.copernicus.eu/api"
+
