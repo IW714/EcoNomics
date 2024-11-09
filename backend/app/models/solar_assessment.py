@@ -18,8 +18,8 @@ class UtilityRatesRequest(BaseModel):
     location: Location
 
 class SolarAssessmentRequest(BaseModel):
-    pvwatts: PVWattsRequest
-    utility_rates: UtilityRatesRequest
+    latitude: float = Field(..., example=37.7749)
+    longitude: float = Field(..., example=-122.4194)
 
 class SolarAssessmentResponse(BaseModel):
     ac_annual: float = Field(..., description="Annual AC system output (kWhac)")

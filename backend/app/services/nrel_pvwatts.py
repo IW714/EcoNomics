@@ -14,20 +14,20 @@ def get_pvwatts_data(pv_request: PVWattsRequest) -> dict:
     """
     Fetches PVWatts solar potential data from NREL API.
 
-    :param pv_request: Dictionary containing system specifications and location
+    :param pv_request: PVWattsRequest object containing system specifications and location
     :return: Dictionary containing PVWatts output data
     """
     params = {
         "format": "json",
         "api_key": NREL_API_KEY,
-        "system_capacity": pv_request.get("system_capacity"),
-        "module_type": pv_request.get("module_type"),
-        "losses": pv_request.get("losses"),
-        "array_type": pv_request.get("array_type"),
-        "tilt": pv_request.get("tilt"),
-        "azimuth": pv_request.get("azimuth"),
-        "lat": pv_request.get("location").get("latitude"),
-        "lon": pv_request.get("location").get("longitude")
+        "system_capacity": pv_request.system_capacity,
+        "module_type": pv_request.module_type,
+        "losses": pv_request.losses,
+        "array_type": pv_request.array_type,
+        "tilt": pv_request.tilt,
+        "azimuth": pv_request.azimuth,
+        "lat": pv_request.location.latitude,
+        "lon": pv_request.location.longitude
     }
 
     response = requests.get(NREL_PVWatts_BASE_URL, params=params)
