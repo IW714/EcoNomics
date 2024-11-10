@@ -4,7 +4,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { Input } from "@/components/ui/input";
 import { SolarAssessmentResponse, WindDataResponse } from "@/models/types";
 import { calculateSolarPotential, processWindData, getCoordinates } from "@/services/apiService";
-import { ChatWidget } from "./ChatWidget";
+import ChatWidget from "./ChatWidget";
 
 const HomePage = () => {
   const [longitude, setLongitude] = useState("");
@@ -15,12 +15,9 @@ const HomePage = () => {
   const [solarError, setSolarError] = useState("");
   const [windError, setWindError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [chatMessages, setChatMessages] = useState<string[]>([]);
 
   const validateCoordinates = (lat: number, lon: number): boolean => {
-    return !isNaN(lat) && !isNaN(lon) && 
-           lat >= -90 && lat <= 90 && 
-           lon >= -180 && lon <= 180;
+    return !isNaN(lat) && !isNaN(lon) && lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180;
   };
 
   const getCoords = async () => {
@@ -41,7 +38,6 @@ const HomePage = () => {
   const handleSolarSubmit = async () => {
     setSolarError("");
     setLoading(true);
-
     try {
       let lat = Number(latitude);
       let lon = Number(longitude);
@@ -58,10 +54,7 @@ const HomePage = () => {
         throw new Error("Please enter valid coordinates or a city name");
       }
 
-      const data = await calculateSolarPotential({ 
-        latitude: lat, 
-        longitude: lon 
-      });
+      const data = await calculateSolarPotential({ latitude: lat, longitude: lon });
       setSolarResult(data);
     } catch (err) {
       setSolarError(err instanceof Error ? err.message : "Failed to calculate solar potential");
@@ -75,11 +68,11 @@ const HomePage = () => {
     setWindError("");
     setLoading(true);
     setWindResult(null);
-    
+
     try {
       let lat = Number(latitude);
       let lon = Number(longitude);
-      
+
       if (cityName.trim()) {
         const coords = await getCoords();
         if (coords) {
@@ -92,14 +85,8 @@ const HomePage = () => {
         throw new Error("Please enter valid coordinates or a city name");
       }
 
-      const data = await processWindData(
-        lat,
-        lon,
-        100,
-        "2019-01-01",
-        "2019-01-31"
-      );
-      
+      const data = await processWindData(lat, lon, 100, "2019-01-01", "2019-01-31");
+
       setWindResult(data);
     } catch (err) {
       if (err instanceof Error) {
@@ -113,30 +100,26 @@ const HomePage = () => {
     }
   };
 
-  const handleChatSubmit = (message: string) => {
-    setChatMessages((prevMessages) => [...prevMessages, message]);
-    console.log("New message:", message);
-  };
-
   return (
-    <div className="container mx-auto p-4 flex">
-      <div className="mr-10 w-2/3">
-        <Card className="w-full">
+    <div className="container mx-auto p-4 flex flex-col lg:flex-row gap-8 justify-center">
+      
+      {/* Chat Widget in the Top Left */}
+      <div className="lg:w-2/3">
           <CardHeader>
-            <CardTitle>Chat</CardTitle>
+            <CardTitle>Chat Assistance</CardTitle>
           </CardHeader>
           <CardContent>
-            <ChatWidget chatMessages={chatMessages} onChatSubmit={handleChatSubmit} />
+            <ChatWidget />
           </CardContent>
-        </Card>
       </div>
-      
-      <div className="w-1/2 ml-15">
-        <Card className="w-full">
+
+      {/* Renewable Energy Assessment */}
+      <div className="lg:w-2/3">
+        <Card className="w-full shadow-md rounded-lg">
           <CardHeader>
             <CardTitle>Renewable Energy Assessment</CardTitle>
             <CardDescription>
-              Enter a city name or coordinates to calculate solar and wind energy potential
+              Enter a city name or coordinates to calculate solar and wind energy potential.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -184,18 +167,10 @@ const HomePage = () => {
           </CardContent>
           <CardFooter className="flex flex-col space-y-4">
             <div className="flex space-x-4 w-full">
-              <Button 
-                onClick={handleSolarSubmit} 
-                disabled={loading}
-                className="flex-1"
-              >
+              <Button onClick={handleSolarSubmit} disabled={loading} className="flex-1">
                 {loading ? "Calculating..." : "Calculate Solar Potential"}
               </Button>
-              <Button 
-                onClick={handleWindSubmit} 
-                disabled={loading}
-                className="flex-1"
-              >
+              <Button onClick={handleWindSubmit} disabled={loading} className="flex-1">
                 {loading ? "Calculating..." : "Calculate Wind Potential"}
               </Button>
             </div>
@@ -208,40 +183,14 @@ const HomePage = () => {
             )}
           </CardFooter>
 
+          {/* Display Results */}
           {(solarResult || windResult) && (
             <div className="p-6 border-t border-gray-200">
               {solarResult && (
                 <div className="mb-6">
                   <h3 className="text-lg font-semibold mb-4">Solar Assessment Results</h3>
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="p-4 bg-gray-50 rounded-md">
-                      <p className="text-sm font-medium text-gray-600">Annual AC Output</p>
-                      <p className="text-lg">{solarResult.ac_annual.toFixed(2)} kWh</p>
-                    </div>
-                    <div className="p-4 bg-gray-50 rounded-md">
-                      <p className="text-sm font-medium text-gray-600">Solar Radiation</p>
-                      <p className="text-lg">{solarResult.solrad_annual.toFixed(2)} kWh/m²/day</p>
-                    </div>
-                    <div className="p-4 bg-gray-50 rounded-md">
-                      <p className="text-sm font-medium text-gray-600">Capacity Factor</p>
-                      <p className="text-lg">{(solarResult.capacity_factor * 100).toFixed(1)}%</p>
-                    </div>
-                    <div className="p-4 bg-gray-50 rounded-md">
-                      <p className="text-sm font-medium text-gray-600">Panel Area</p>
-                      <p className="text-lg">{solarResult.panel_area.toFixed(2)} m²</p>
-                    </div>
-                    <div className="p-4 bg-gray-50 rounded-md">
-                      <p className="text-sm font-medium text-gray-600">Annual Savings</p>
-                      <p className="text-lg">${solarResult.annual_cost_savings.toFixed(2)}</p>
-                    </div>
-                    <div className="p-4 bg-gray-50 rounded-md">
-                      <p className="text-sm font-medium text-gray-600">ROI Period</p>
-                      <p className="text-lg">{solarResult.roi_years.toFixed(1)} years</p>
-                    </div>
-                    <div className="p-4 bg-gray-50 rounded-md col-span-2">
-                      <p className="text-sm font-medium text-gray-600">CO₂ Reduction</p>
-                      <p className="text-lg">{solarResult.co2_reduction.toFixed(2)} kg/year</p>
-                    </div>
+                    {/* Solar results here */}
                   </div>
                 </div>
               )}
@@ -250,26 +199,7 @@ const HomePage = () => {
                 <div>
                   <h3 className="text-lg font-semibold mb-4">Wind Assessment Results</h3>
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="p-4 bg-gray-50 rounded-md">
-                      <p className="text-sm font-medium text-gray-600">Annual Energy Output</p>
-                      <p className="text-lg">{windResult.total_energy_kwh.toFixed(2)} kWh</p>
-                    </div>
-                    <div className="p-4 bg-gray-50 rounded-md">
-                      <p className="text-sm font-medium text-gray-600">Capacity Factor</p>
-                      <p className="text-lg">{windResult.capacity_factor_percentage.toFixed(1)}%</p>
-                    </div>
-                    <div className="p-4 bg-gray-50 rounded-md">
-                      <p className="text-sm font-medium text-gray-600">Annual Savings</p>
-                      <p className="text-lg">${windResult.cost_savings.toFixed(2)}</p>
-                    </div>
-                    <div className="p-4 bg-gray-50 rounded-md">
-                      <p className="text-sm font-medium text-gray-600">Payback Period</p>
-                      <p className="text-lg">{(30000 / windResult.cost_savings).toFixed(1)} years</p>
-                    </div>
-                    <div className="p-4 bg-gray-50 rounded-md col-span-2">
-                      <p className="text-sm font-medium text-gray-600">CO₂ Reduction</p>
-                      <p className="text-lg">{(windResult.total_energy_kwh * 0.131).toFixed(2)} kg/year</p>
-                    </div>
+                    {/* Wind results here */}
                   </div>
                 </div>
               )}

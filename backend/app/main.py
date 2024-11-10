@@ -17,6 +17,7 @@ from app.services.wind.calculate.calculate_air_density import calculate_air_dens
 from app.services.wind.fetch.fetch_wind_data import fetch_wind_data
 from app.calculations.wind_calculations import calculate_annual_wind_energy, calculate_wind_cost_savings
 from app.services.wind.calculate.merge_and_calculate_power import calculate_wind_metrics, merge_and_calculate_power
+from app.models.ai import ChatRequest, ChatResponse
 
 # Set up logging
 logger = logging.getLogger("wind_data_api")
@@ -42,6 +43,8 @@ app.add_middleware(
 # Geocoding API setup
 GEOCODING_API_KEY = os.getenv("GEOCODE_API_KEY")
 GEOCODING_API_URL = "https://api.opencagedata.com/geocode/v1/json"
+
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 
 @app.post("/get_coordinates", response_model=Location)
@@ -199,3 +202,28 @@ def process_wind_data(request: WindDataRequest):
     except Exception as e:
         logger.error(f"Error in wind calculations: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/chat", response_model=ChatResponse)
+async def chat_with_openai(request: ChatRequest):
+    headers = {
+        "Authorization": f"Bearer {OPENAI_API_KEY}",
+        "Content-Type": "application/json"
+    }
+    data = {
+        "model": "gpt-3.5-turbo",  # Or "gpt-4" if you have access
+        "messages": [{"role": "user", "content": request.message}]
+    }
+    
+    try:
+        openai_response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=data)
+        openai_response.raise_for_status()  # Raise an error for bad HTTP responses
+
+        response_data = openai_response.json()
+        assistant_message = response_data["choices"][0]["message"]["content"]
+
+        return ChatResponse(response=assistant_message)
+
+    except requests.RequestException as e:
+        # Log the error and return a user-friendly message
+        logger.error(f"Error communicating with OpenAI API: {e}")
+        raise HTTPException(status_code=500, detail="Error communicating with OpenAI API")

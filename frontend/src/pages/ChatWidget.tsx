@@ -1,113 +1,111 @@
-import * as React from "react";
-import { useState } from "react";
-import { Textarea } from "@/components/ui/textarea";
-import { cn } from "@/lib/utils";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { ChatBubble, ChatBubbleMessage } from "@/components/ui/chat/chat-bubble";
+import { ChatInput } from "@/components/ui/chat/chat-input";
+import { CornerDownLeft } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 
-interface ChatInputProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {}
+type Message = {
+  id: number;
+  role: 'user' | 'assistant';
+  message: string;
+  isLoading?: boolean;
+};
 
-const ChatInput = React.forwardRef<HTMLTextAreaElement, ChatInputProps>(
-  ({ className, ...props }, ref) => (
-    <Textarea
-      autoComplete="off"
-      ref={ref}
-      name="message"
-      className={cn(
-        "max-h-12 px-4 py-3 bg-background text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 w-full rounded-md flex items-center h-16 resize-none",
-        className
-      )}
-      {...props}
-    />
-  )
-);
-ChatInput.displayName = "ChatInput";
+const ChatWidget: React.FC = () => {
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
 
-interface ChatMessageListProps extends React.HTMLAttributes<HTMLDivElement> {
-  chatMessages: string[];
-}
+  useEffect(() => {
+    // Auto-scroll to the bottom when new messages are added
+    messagesContainerRef.current?.scrollTo(0, messagesContainerRef.current.scrollHeight);
+  }, [messages]);
 
-const ChatMessageList: React.FC<ChatMessageListProps> = ({
-  className,
-  chatMessages,
-  ...props
-}) => (
-  <div
-    className={cn(
-      "flex flex-col w-full h-full p-4 gap-6 overflow-y-auto",
-      className
-    )}
-    {...props}
-  >
-    {chatMessages.map((message, index) => (
-      <div
-        key={index}
-        className="bg-gray-100 p-3 rounded-md shadow-sm dark:bg-neutral-800 dark:text-neutral-50"
-      >
-        {message}
-      </div>
-    ))}
-  </div>
-);
-
-interface ChatWidgetProps {
-  chatMessages: string[];
-  onChatSubmit: (message: string) => void;
-}
-
-const ChatWidget: React.FC<ChatWidgetProps> = ({ chatMessages, onChatSubmit }) => {
-  const [message, setMessage] = useState("");
-
-  const handleChatSubmit = () => {
-    if (message.trim()) {
-      onChatSubmit(message);
-      setMessage("");
-    }
+  const addMessage = (role: 'user' | 'assistant', text: string) => {
+    const newMessage = { id: Date.now(), role, message: text };
+    setMessages(prev => [...prev, newMessage]);
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleChatSubmit();
+  const handleSendMessage = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!input.trim() || isLoading) return;
+
+    addMessage('user', input.trim());
+    setInput('');
+    setIsLoading(true);
+
+    try {
+      const response = await fetch('http://127.0.0.1:8000/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: input.trim() }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        addMessage('assistant', data.response);
+      } else {
+        addMessage('assistant', 'Error: Unable to fetch response. Please try again later.');
+      }
+    } catch (error) {
+      addMessage('assistant', 'Error: Unable to fetch response. Please try again later.');
+      console.error(error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
-    <div className="border-t p-4 bg-gray-50 dark:bg-neutral-900">
-      <div className="flex items-center gap-2">
-        <ChatInput
-          placeholder="Send a message..."
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          onKeyDown={handleKeyDown}
-          className="flex-1"
-        />
-        <Button size="icon" onClick={handleChatSubmit}>
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-5 w-5"
-          >
-            <path
-              d="M22 2L11 13"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-            <path
-              d="M22 2L15 22L11 13L2 9L22 2Z"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </Button>
+    <div className="w-full lg:w-[28rem] h-full shadow-lg rounded-lg overflow-hidden bg-white border">
+      <div className="relative flex flex-col h-full p-2">
+        {/* Messages container with overflow-y-auto and a fixed max height */}
+        <div
+          ref={messagesContainerRef}
+          className="overflow-y-auto flex-grow max-h-[20rem] p-2"  // Adjust max-height as needed
+        >
+          <AnimatePresence>
+            {messages.map((message) => (
+              <motion.div
+                key={message.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2 }}
+                className="flex flex-col gap-2"
+              >
+                <ChatBubble variant={message.role === 'assistant' ? 'received' : 'sent'}>
+                  <Avatar>
+                    <AvatarImage src={message.role === 'assistant' ? '/bot-avatar.png' : '/user-avatar.png'} />
+                    <AvatarFallback>{message.role === 'assistant' ? '🤖' : 'U'}</AvatarFallback>
+                  </Avatar>
+                  <ChatBubbleMessage isLoading={message.isLoading}>
+                    {message.message}
+                  </ChatBubbleMessage>
+                </ChatBubble>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        </div>
+        
+        {/* Input form */}
+        <form onSubmit={handleSendMessage} className="flex items-center space-x-2 p-2 border-t">
+          <ChatInput
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="Type a message..."
+            className="flex-1 p-1"
+          />
+          <Button type="submit" disabled={!input || isLoading} size="sm">
+            <CornerDownLeft />
+          </Button>
+        </form>
       </div>
-      <ChatMessageList chatMessages={chatMessages} className="mt-4" />
     </div>
   );
 };
 
-export { ChatWidget };
+export default ChatWidget;
