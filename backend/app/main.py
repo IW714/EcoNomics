@@ -122,7 +122,7 @@ def calculate_solar_potential(request: SolarAssessmentRequest):
         # Calculate ROI
         # Assuming initial_cost is based on system_capacity. This can be made more precise with detailed inputs.
         # Example: $4,000 per kW installed
-        initial_cost = request.pvwatts.system_capacity * 2500  # USD TODO: might need to allow users to adjust initial costs
+        initial_cost = request.pvwatts.system_capacity * 2500  # USD TODO: might need to allow users to adjust initial costs between $2,500 - $4,000
         roi_years = calculate_roi(initial_cost, annual_cost_savings)
 
         # Calculate CO2 reduction

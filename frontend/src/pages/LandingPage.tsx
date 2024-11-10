@@ -2,63 +2,111 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/button';
 import Gradient from '../components/Gradient';
 import { TypeAnimation } from 'react-type-animation';
-import { Camera, Sparkles, Zap } from 'lucide-react';
+import { BarChart2, Leaf, Zap } from 'lucide-react';
 
 const LandingPage = () => {
   const navigate = useNavigate();
-  
-  return (
-    <div className="relative min-h-screen">
-      <Gradient />
-      <div className="absolute inset-0 flex items-center justify-center">
-        <div className="bg-white bg-opacity-90 backdrop-filter backdrop-blur-lg rounded-lg shadow-xl p-8 max-w-lg w-full mx-4">
-          <h1 className="text-3xl md:text-4xl font-bold text-center mb-6 text-gray-800">
-            <TypeAnimation
-              sequence={[
-                'Welcome to Fabrik!',
-                5000,
-                'Welcome to FASHN_AI 😊',
-                5000,
-                'AI Fashion Magic ✨',
-                5000,
-              ]}
-              wrapper="span"
-              cursor={true}
-              repeat={Infinity}
-              className="inline-block"
-            />
-          </h1>
-          
-          <div className="grid grid-cols-3 gap-4 mb-8">
-            <div className="text-center p-4">
-              <Camera className="w-6 h-6 mb-2 mx-auto text-[#02B5AB]" />
-              <p className="text-sm font-medium text-gray-700">AI-Powered Fashion Shoots</p>
-            </div>
-            <div className="text-center p-4">
-              <Sparkles className="w-6 h-6 mb-2 mx-auto text-[#02B5AB]" />
-              <p className="text-sm font-medium text-gray-700">Any Model, Any Outfit</p>
-            </div>
-            <div className="text-center p-4">
-              <Zap className="w-6 h-6 mb-2 mx-auto text-[#02B5AB]" />
-              <p className="text-sm font-medium text-gray-700">Instant Results</p>
-            </div>
-          </div>
 
-          <p className="text-center text-gray-600 mb-6 text-sm">
-            Transform your fashion vision into reality using the FASHN AI platform.
-          </p>
-          
-          <div className="text-center space-y-4">
-            <Button
-              onClick={() => navigate('/home')}
-              className="w-full px-6 py-3 text-lg bg-[#02B5AB] text-white hover:bg-[#029990] transition-colors"
-            >
-              Get Started
-            </Button>
+  return (
+    <>
+      {/* Background container */}
+      <div className="fixed inset-0 bg-green-100" />
+      
+      {/* Main content wrapper */}
+      <div className="relative min-h-screen">
+        <Gradient />
+        <div className="relative z-10 min-h-screen flex items-center">
+          {/* Content container */}
+          <div className="w-full max-w-6xl px-6 mx-auto">
+            <div className="flex flex-col lg:flex-row gap-12">
+              {/* Left side content */}
+              <div className="flex-1 flex flex-col justify-center">
+                <h1 className="text-5xl font-bold text-gray-800 mb-6">
+                  Make sustainable choices.
+                  <br />
+                  <span className="text-[#02B5AB]">Save money.</span>
+                </h1>
+                <p className="text-xl text-gray-700 mb-8 max-w-xl">
+                  Discover how switching to renewable energy can benefit both your wallet and the planet.
+                </p>
+              </div>
+
+              {/* Right side card */}
+              <div className="flex-1">
+                <div className="bg-white bg-opacity-90 backdrop-filter backdrop-blur-lg rounded-lg shadow-xl p-8">
+                  {/* Logo */}
+                  <div className="flex justify-center mb-6">
+                    <img
+                      src="/eco_logo_notext.png"
+                      alt="ECOnomics Logo"
+                      className="max-w-[100px] max-h-[100px]"
+                    />
+                  </div>
+
+                  <h2 className="text-3xl font-bold text-center mb-6 text-gray-800">
+                    <TypeAnimation
+                      sequence={[
+                        'Welcome to ECOnomics!',
+                        3000,
+                        'Calculate Your Savings',
+                        3000,
+                        'Reduce Your Carbon Footprint',
+                        3000,
+                      ]}
+                      wrapper="span"
+                      cursor={true}
+                      repeat={Infinity}
+                      className="inline-block"
+                    />
+                  </h2>
+
+                  <div className="grid grid-cols-1 gap-6 mb-8">
+                    <div className="flex items-center p-4 bg-green-50 rounded-lg">
+                      <BarChart2 className="w-8 h-8 mr-4 text-[#02B5AB]" />
+                      <div>
+                        <h3 className="font-medium text-gray-800">Smart Analytics</h3>
+                        <p className="text-sm text-gray-600">Calculate potential savings and ROI from renewable energy</p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center p-4 bg-green-50 rounded-lg">
+                      <Leaf className="w-8 h-8 mr-4 text-[#02B5AB]" />
+                      <div>
+                        <h3 className="font-medium text-gray-800">Environmental Impact</h3>
+                        <p className="text-sm text-gray-600">Track your CO2 reduction and environmental benefits</p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center p-4 bg-green-50 rounded-lg">
+                      <Zap className="w-8 h-8 mr-4 text-[#02B5AB]" />
+                      <div>
+                        <h3 className="font-medium text-gray-800">AI-Powered Insights</h3>
+                        <p className="text-sm text-gray-600">Get personalized recommendations for your energy needs</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <Button
+                      onClick={() => navigate('/home')}
+                      className="w-full px-6 py-3 text-lg bg-[#02B5AB] text-white hover:bg-[#029990] transition-colors"
+                    >
+                      Calculate Your Savings
+                    </Button>
+                    <Button
+                      onClick={() => navigate('/chatbot')}
+                      className="w-full px-6 py-3 text-lg border-2 border-[#02B5AB] text-[#02B5AB] bg-transparent hover:bg-[#02B5AB] hover:text-white transition-colors"
+                    >
+                      Chat with AI Assistant
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
 
