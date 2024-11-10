@@ -5,6 +5,7 @@ import { ChatBubble, ChatBubbleMessage } from '@/components/ui/chat/chat-bubble'
 import { ChatInput } from '@/components/ui/chat/chat-input';
 import { CornerDownLeft } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
+import { SolarAssessmentResponse, WindDataResponse } from '@/models/types';
 
 type Message = {
   id: number;
@@ -14,7 +15,7 @@ type Message = {
 };
 
 type ChatWidgetProps = {
-  onCombinedAssessmentResult: (city: string) => Promise<void>;
+  onCombinedAssessmentResult: (solarAssessment: SolarAssessmentResponse, windAssessment: WindDataResponse) => void;
 };
 
 const ChatWidget: React.FC<ChatWidgetProps> = ({ onCombinedAssessmentResult }) => {
@@ -22,6 +23,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ onCombinedAssessmentResult }) =
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const sessionId = 'unique-session-id'; // TODO: With Auth, Generate or retrieve a unique session ID per user/session
 
   useEffect(() => {
     messagesContainerRef.current?.scrollTo(0, messagesContainerRef.current.scrollHeight);
@@ -36,44 +38,33 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ onCombinedAssessmentResult }) =
     e.preventDefault();
     if (!input.trim() || isLoading) return;
 
-    const userMessage = input.trim().toLowerCase();
+    const userInput = input.trim();
+    addMessage('user', userInput);
+    setInput('');
+    setIsLoading(true);
 
-    if (userMessage.startsWith('calculate energy in ')) {
-      const cityName = userMessage.replace('calculate energy in ', '').trim();
-      setIsLoading(true);
-      try {
-        await onCombinedAssessmentResult(cityName);
-        addMessage('assistant', `Energy assessment for ${cityName} has been completed.`);
-      } catch (error) {
-        addMessage('assistant', 'Error: Unable to perform energy assessment. Please try again.');
-        console.error(error);
-      } finally {
-        setIsLoading(false);
-      }
-    } else {
-      addMessage('user', input.trim());
-      setInput('');
-      setIsLoading(true);
+    try {
+      const response = await fetch('http://127.0.0.1:8000/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: userInput, session_id: sessionId }),
+      });
 
-      try {
-        const response = await fetch('http://127.0.0.1:8000/chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message: input.trim() }),
-        });
+      const data = await response.json();
+      if (response.ok) {
+        addMessage('assistant', data.response);
 
-        const data = await response.json();
-        if (response.ok) {
-          addMessage('assistant', data.response);
-        } else {
-          addMessage('assistant', 'Error: Unable to fetch response. Please try again later.');
+        if (data.solar_assessment && data.wind_assessment) {
+          onCombinedAssessmentResult(data.solar_assessment, data.wind_assessment);
         }
-      } catch (error) {
+      } else {
         addMessage('assistant', 'Error: Unable to fetch response. Please try again later.');
-        console.error(error);
-      } finally {
-        setIsLoading(false);
       }
+    } catch (error) {
+      addMessage('assistant', 'Error: Unable to fetch response. Please try again later.');
+      console.error(error);
+    } finally {
+      setIsLoading(false);
     }
   };
 

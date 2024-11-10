@@ -2,8 +2,8 @@ import React, { useState, useCallback } from 'react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import ChatWidget from './ChatWidget';
-import { SolarAssessmentResponse, WindDataResponse, CombinedAssessmentResponse } from '@/models/types';
-import { getCombinedAssessment, calculateSolarPotential, processWindData, getCoordinates} from '@/services/apiService';
+import { SolarAssessmentResponse, WindDataResponse } from '@/models/types';
+import { getCoordinates, calculateSolarPotential, processWindData } from '@/services/apiService';
 import { Input } from '@/components/ui/input';
 
 const HomePage: React.FC = () => {
@@ -25,23 +25,14 @@ const HomePage: React.FC = () => {
     setLongitude(parseFloat(e.target.value));
   };
 
-  const handleCombinedAssessment = useCallback(async (city: string) => {
-    setError('');
-    setLoading(true);
-    setSolarResult(null);
-    setWindResult(null);
-
-    try {
-      const data: CombinedAssessmentResponse = await getCombinedAssessment(city.trim());
-      setSolarResult(data.solar_assessment);
-      setWindResult(data.wind_assessment);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch combined assessment.');
-      console.error('Error fetching combined assessment:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  // Updated handler to accept assessment data from the chat
+  const handleCombinedAssessmentResult = useCallback(
+    (solarAssessment: SolarAssessmentResponse, windAssessment: WindDataResponse) => {
+      setSolarResult(solarAssessment);
+      setWindResult(windAssessment);
+    },
+    []
+  );
 
   const getCoords = async () => {
     if (cityName.trim()) {
@@ -147,7 +138,8 @@ const HomePage: React.FC = () => {
             <CardTitle>Chat Assistance</CardTitle>
           </CardHeader>
           <CardContent>
-            <ChatWidget onCombinedAssessmentResult={handleCombinedAssessment} />
+            {/* Updated to use handleCombinedAssessmentResult */}
+            <ChatWidget onCombinedAssessmentResult={handleCombinedAssessmentResult} />
           </CardContent>
         </Card>
       </div>

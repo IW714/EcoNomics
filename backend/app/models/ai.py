@@ -1,6 +1,7 @@
-# Define a request model for the chat message
 from pydantic import BaseModel
-
+from typing import Optional
+from app.models.solar_assessment import SolarAssessmentResponse
+from app.models.wind import WindDataResponse
 
 class ChatRequest(BaseModel):
     message: str
@@ -8,6 +9,8 @@ class ChatRequest(BaseModel):
 # Define a response model for the chat response
 class ChatResponse(BaseModel):
     response: str
+    solar_assessment: Optional[SolarAssessmentResponse] = None
+    wind_assessment: Optional[WindDataResponse] = None
 
 # app/models/combined_assessment.py
 from pydantic import BaseModel

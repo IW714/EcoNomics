@@ -1,4 +1,4 @@
-import { SolarAssessmentResponse, WindDataResponse } from "@/models/types";
+import { SolarAssessmentResponse, WindDataResponse, ChatResponse } from "@/models/types";
 
 const API_BASE_URL = "http://127.0.0.1:8000";
 
@@ -159,5 +159,28 @@ export const getCombinedAssessment = async (cityName: string): Promise<CombinedA
   } catch (error) {
     console.error('Error in getCombinedAssessment:', error);
     throw error instanceof Error ? error : new Error('Failed to fetch combined assessment data');
+  }
+};
+
+export const chatWithAssistant = async (message: string, sessionId: string): Promise<ChatResponse> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/chat`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ message, session_id: sessionId }),
+    });
+
+    if (!response.ok) {
+      const errorDetails = await response.text();
+      const errorJson = JSON.parse(errorDetails);
+      throw new Error(errorJson.detail || 'Failed to communicate with the assistant');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error in chatWithAssistant:', error);
+    throw error instanceof Error ? error : new Error('Failed to communicate with the assistant');
   }
 };

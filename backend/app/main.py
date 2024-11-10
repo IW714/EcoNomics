@@ -6,6 +6,10 @@ import logging
 import pandas as pd
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from langchain_community.chat_models import ChatOpenAI
+from langchain.prompts import PromptTemplate
+from langchain.memory import ConversationBufferMemory
+from langchain.chains import ConversationChain
 
 from app.models.solar_assessment import Location, LocationRequest, PVWattsRequest, SolarAssessmentRequest, SolarAssessmentResponse
 from app.models.wind import WindDataRequest, WindDataResponse
@@ -19,11 +23,6 @@ from app.services.wind.fetch.fetch_wind_data import fetch_wind_data
 from app.calculations.wind_calculations import calculate_annual_wind_energy, calculate_wind_cost_savings
 from app.services.wind.calculate.merge_and_calculate_power import calculate_wind_metrics, merge_and_calculate_power
 from app.models.ai import ChatRequest, ChatResponse, CombinedAssessmentRequest, CombinedAssessmentResponse
-from app.prompts.handlers import PromptHandler
-
-import aiohttp
-import ssl
-import certifi
 
 # Set up logging
 logger = logging.getLogger("wind_data_api")
@@ -52,6 +51,113 @@ GEOCODING_API_KEY = os.getenv("GEOCODE_API_KEY")
 GEOCODING_API_URL = "https://api.opencagedata.com/geocode/v1/json"
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+
+# System prompt for general assistant behavior
+system_prompt = """You are an AI assistant specialized in renewable energy assessments and general energy-related discussions."""
+
+# Prompt to determine if the user wants an assessment
+assessment_prompt_template = PromptTemplate(
+    input_variables=["user_message"],
+    template="""
+    Given the user's message: "{user_message}"
+
+    Determine if they are requesting an energy assessment and extract the location.
+
+    If they are requesting an energy assessment for a specific location, respond with just the location name.
+    If they are not requesting an energy assessment, respond with "NO_ASSESSMENT".
+    """
+    )
+
+energy_assessment_prompt_template = PromptTemplate(
+    input_variables=[
+        "city_name",
+        "solar_data",
+        "wind_data"
+    ],
+    template="""
+    Please analyze these energy assessment results for {city_name}:
+
+    Solar Assessment:
+    {solar_data}
+
+    Wind Assessment:
+    {wind_data}
+
+    Provide a detailed analysis including:
+    1. Overall renewable energy potential for the location
+    2. Comparative advantages between solar and wind
+    3. Economic viability and environmental impact
+    4. Specific recommendations based on the data
+    """
+    )
+
+llm = ChatOpenAI(
+    openai_api_key=OPENAI_API_KEY,
+    temperature=0.7,
+    model="gpt-4o"
+)
+
+memory = ConversationBufferMemory(return_messages=True)
+
+conversation = ConversationChain(
+    llm=llm,
+    memory=memory,
+    verbose=True  # True to see the prompt construction
+)
+
+assessment_check_chain = assessment_prompt_template | llm
+
+energy_assessment_chain = energy_assessment_prompt_template | llm
+
+
+@app.post("/chat", response_model=ChatResponse)
+async def chat_with_openai(request: ChatRequest):
+    user_message = request.message.strip()
+    
+    try:
+        # Step 1: Check if the user wants an assessment and extract location
+        assessment_response = assessment_check_chain.invoke({"user_message": user_message})
+        location = assessment_response.content.strip()
+
+        if location != "NO_ASSESSMENT":
+            # Step 2: Perform the combined assessment
+            combined_result = await combined_assessment(
+                CombinedAssessmentRequest(city_name=location)
+            )
+            
+            # Prepare solar and wind data as formatted strings
+            solar_data = "\n".join([f"{key}: {value}" for key, value in combined_result.solar_assessment.dict().items()])
+            wind_data = "\n".join([f"{key}: {value}" for key, value in combined_result.wind_assessment.dict().items()])
+            
+            # Step 3: Generate the analysis using the energy assessment chain
+            analysis_response = energy_assessment_chain.invoke({
+                "city_name": location,
+                "solar_data": solar_data,
+                "wind_data": wind_data
+            })
+
+            analysis = analysis_response.content.strip()
+            memory.chat_memory.add_user_message(user_message)
+            memory.chat_memory.add_ai_message(analysis)
+
+            return ChatResponse(
+                response=analysis,
+                solar_assessment=combined_result.solar_assessment,
+                wind_assessment=combined_result.wind_assessment
+            )
+        else:
+            # General conversation, use the system prompt
+            # general_chain =  prompt=PromptTemplate(
+            #         input_variables=["user_message"],
+            #         template=system_prompt + "\n\nUser: {user_message}"
+            #     ) | llm
+            # response = general_chain.invoke({"user_message": user_message})
+            # assistant_response = response.content.strip()
+            assistant_response = conversation.predict(input=user_message)
+            return ChatResponse(response=assistant_response)
+    except Exception as e:
+        logger.error(f"Error in /chat endpoint: {e}")
+        raise HTTPException(status_code=500, detail="Error processing your request")
 
 
 @app.post("/get_coordinates", response_model=Location)
@@ -209,81 +315,6 @@ def process_wind_data(request: WindDataRequest):
     except Exception as e:
         logger.error(f"Error in wind calculations: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
-
-
-async def _call_openai(prompt: str, include_system: bool = False) -> str:
-    prompt_handler = PromptHandler()
-    
-    headers = {
-        "Authorization": f"Bearer {OPENAI_API_KEY}",
-        "Content-Type": "application/json"
-    }
-    
-    messages = []
-    if include_system:
-        messages.append({
-            "role": "system",
-            "content": prompt_handler.config.get_system_prompt()
-        })
-    
-    messages.append({
-        "role": "user",
-        "content": prompt
-    })
-    
-    data = {
-        "model": "gpt-3.5-turbo",
-        "messages": messages
-    }
-
-    try:
-        # Create the SSL context with the default trusted certificates
-        ssl_context = ssl.create_default_context(cafile=certifi.where())
-
-        async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=ssl_context)) as session:
-            async with session.post("https://api.openai.com/v1/chat/completions", headers=headers, json=data) as response:
-                response.raise_for_status()
-                data = await response.json()
-                return data["choices"][0]["message"]["content"]
-    except aiohttp.ClientResponseError as e:
-        logger.error(f"Error communicating with OpenAI API: {e}")
-        raise HTTPException(status_code=500, detail="Error communicating with OpenAI API")
-    
-@app.post("/chat", response_model=ChatResponse)
-async def chat_with_openai(request: ChatRequest):
-    prompt_handler = PromptHandler()
-    user_message = request.message.strip()
-    
-    should_run_assessment, location = await prompt_handler.check_assessment_and_location(user_message)
-    
-    if should_run_assessment:
-        try:
-            if not location:
-                return ChatResponse(
-                    response="I couldn't determine which location you want me to analyze. Can you please specify a city?"
-                )
-                
-            combined_result = await combined_assessment(
-                CombinedAssessmentRequest(city_name=location)
-            )
-            
-            prompt = prompt_handler.format_assessment_data(
-                location,
-                combined_result.solar_assessment.dict(),
-                combined_result.wind_assessment.dict()
-            )
-            
-            response = await _call_openai(prompt, include_system=True)
-            return ChatResponse(response=response)
-            
-        except Exception as e:
-            logger.error(f"Failed to perform assessment: {e}")
-            return ChatResponse(
-                response="I encountered an error while performing the energy assessment. Please try again."
-            )
-    else:
-        response = await _call_openai(user_message, include_system=True)
-        return ChatResponse(response=response)
     
 @app.post("/combined_assessment", response_model=CombinedAssessmentResponse)
 async def combined_assessment(request: CombinedAssessmentRequest):
