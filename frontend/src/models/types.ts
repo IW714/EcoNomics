@@ -15,4 +15,7 @@ export interface SolarAssessmentResponse {
     message: string;
 }
 
-  
+export interface CombinedAssessmentResponse {
+  solar_assessment: SolarAssessmentResponse;
+  wind_assessment: WindDataResponse;
+}

@@ -1,10 +1,10 @@
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
-import { ChatBubble, ChatBubbleMessage } from "@/components/ui/chat/chat-bubble";
-import { ChatInput } from "@/components/ui/chat/chat-input";
-import { CornerDownLeft } from "lucide-react";
-import { useState, useRef, useEffect } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import React, { useState, useRef, useEffect } from 'react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
+import { ChatBubble, ChatBubbleMessage } from '@/components/ui/chat/chat-bubble';
+import { ChatInput } from '@/components/ui/chat/chat-input';
+import { CornerDownLeft } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
 
 type Message = {
   id: number;
@@ -13,14 +13,17 @@ type Message = {
   isLoading?: boolean;
 };
 
-const ChatWidget: React.FC = () => {
+type ChatWidgetProps = {
+  onCombinedAssessmentResult: (city: string) => Promise<void>;
+};
+
+const ChatWidget: React.FC<ChatWidgetProps> = ({ onCombinedAssessmentResult }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Auto-scroll to the bottom when new messages are added
     messagesContainerRef.current?.scrollTo(0, messagesContainerRef.current.scrollHeight);
   }, [messages]);
 
@@ -33,40 +36,51 @@ const ChatWidget: React.FC = () => {
     e.preventDefault();
     if (!input.trim() || isLoading) return;
 
-    addMessage('user', input.trim());
-    setInput('');
-    setIsLoading(true);
+    const userMessage = input.trim().toLowerCase();
 
-    try {
-      const response = await fetch('http://127.0.0.1:8000/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: input.trim() }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        addMessage('assistant', data.response);
-      } else {
-        addMessage('assistant', 'Error: Unable to fetch response. Please try again later.');
+    if (userMessage.startsWith('calculate energy in ')) {
+      const cityName = userMessage.replace('calculate energy in ', '').trim();
+      setIsLoading(true);
+      try {
+        await onCombinedAssessmentResult(cityName);
+        addMessage('assistant', `Energy assessment for ${cityName} has been completed.`);
+      } catch (error) {
+        addMessage('assistant', 'Error: Unable to perform energy assessment. Please try again.');
+        console.error(error);
+      } finally {
+        setIsLoading(false);
       }
-    } catch (error) {
-      addMessage('assistant', 'Error: Unable to fetch response. Please try again later.');
-      console.error(error);
-    } finally {
-      setIsLoading(false);
+    } else {
+      addMessage('user', input.trim());
+      setInput('');
+      setIsLoading(true);
+
+      try {
+        const response = await fetch('http://127.0.0.1:8000/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: input.trim() }),
+        });
+
+        const data = await response.json();
+        if (response.ok) {
+          addMessage('assistant', data.response);
+        } else {
+          addMessage('assistant', 'Error: Unable to fetch response. Please try again later.');
+        }
+      } catch (error) {
+        addMessage('assistant', 'Error: Unable to fetch response. Please try again later.');
+        console.error(error);
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 
   return (
     <div className="w-full lg:w-[28rem] h-full shadow-lg rounded-lg overflow-hidden bg-white border">
       <div className="relative flex flex-col h-full p-2">
-        {/* Messages container with overflow-y-auto and a fixed max height */}
-        <div
-          ref={messagesContainerRef}
-          className="overflow-y-auto flex-grow max-h-[20rem] p-2"  // Adjust max-height as needed
-        >
+        <div ref={messagesContainerRef} className="overflow-y-auto flex-grow max-h-[20rem] p-2">
           <AnimatePresence>
             {messages.map((message) => (
               <motion.div
@@ -91,7 +105,6 @@ const ChatWidget: React.FC = () => {
           </AnimatePresence>
         </div>
         
-        {/* Input form */}
         <form onSubmit={handleSendMessage} className="flex items-center space-x-2 p-2 border-t">
           <ChatInput
             value={input}

@@ -132,3 +132,32 @@ export const processWindData = async (
     throw new Error("Failed to process wind data");
   }
 };
+
+
+interface CombinedAssessmentResponse {
+  solar_assessment: SolarAssessmentResponse;
+  wind_assessment: WindDataResponse;
+}
+
+export const getCombinedAssessment = async (cityName: string): Promise<CombinedAssessmentResponse> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/combined_assessment`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ city_name: cityName }),
+    });
+
+    if (!response.ok) {
+      const errorDetails = await response.text();
+      const errorJson = JSON.parse(errorDetails);
+      throw new Error(errorJson.detail || 'Failed to fetch combined assessment data');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error in getCombinedAssessment:', error);
+    throw error instanceof Error ? error : new Error('Failed to fetch combined assessment data');
+  }
+};

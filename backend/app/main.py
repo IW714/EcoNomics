@@ -17,7 +17,8 @@ from app.services.wind.calculate.calculate_air_density import calculate_air_dens
 from app.services.wind.fetch.fetch_wind_data import fetch_wind_data
 from app.calculations.wind_calculations import calculate_annual_wind_energy, calculate_wind_cost_savings
 from app.services.wind.calculate.merge_and_calculate_power import calculate_wind_metrics, merge_and_calculate_power
-from app.models.ai import ChatRequest, ChatResponse
+from app.models.ai import ChatRequest, ChatResponse, CombinedAssessmentRequest, CombinedAssessmentResponse
+import aiohttp
 
 # Set up logging
 logger = logging.getLogger("wind_data_api")
@@ -204,27 +205,121 @@ def process_wind_data(request: WindDataRequest):
         logger.error(f"Error in wind calculations: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/chat", response_model=ChatResponse)
-async def chat_with_openai(request: ChatRequest):
+
+async def _call_openai(prompt: str) -> str:
     headers = {
         "Authorization": f"Bearer {OPENAI_API_KEY}",
         "Content-Type": "application/json"
     }
     data = {
-        "model": "gpt-3.5-turbo",  # Or "gpt-4" if you have access
-        "messages": [{"role": "user", "content": request.message}]
+        "model": "gpt-3.5-turbo",
+        "messages": [{"role": "user", "content": prompt}]
     }
-    
+
     try:
-        openai_response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=data)
-        openai_response.raise_for_status()  # Raise an error for bad HTTP responses
-
-        response_data = openai_response.json()
-        assistant_message = response_data["choices"][0]["message"]["content"]
-
-        return ChatResponse(response=assistant_message)
-
-    except requests.RequestException as e:
-        # Log the error and return a user-friendly message
+        async with aiohttp.ClientSession() as session:
+            async with session.post("https://api.openai.com/v1/chat/completions", headers=headers, json=data) as response:
+                response.raise_for_status()
+                data = await response.json()
+                return data["choices"][0]["message"]["content"]
+    except aiohttp.ClientResponseError as e:
         logger.error(f"Error communicating with OpenAI API: {e}")
         raise HTTPException(status_code=500, detail="Error communicating with OpenAI API")
+
+@app.post("/chat", response_model=ChatResponse)
+async def chat_with_openai(request: ChatRequest):
+    user_message = request.message.lower().strip()
+
+    # Ask the model if we should run the energy assessment functions
+    should_run_assessment = await _should_run_energy_assessment(user_message)
+
+    if should_run_assessment:
+        try:
+            # Run the combined assessment
+            city_name = user_message.replace("calculate energy in", "").strip()
+            combined_result = await combined_assessment(CombinedAssessmentRequest(city_name=city_name))
+            
+            # Format the response with assessment details
+            response = (
+                f"Energy assessment for {city_name}:\n"
+                f"Solar:\n- Annual AC Output: {combined_result.solar_assessment.ac_annual} kWh\n"
+                f"- Solar Radiation: {combined_result.solar_assessment.solrad_annual} kWh/m²/day\n"
+                f"Wind:\n- Annual Energy Output: {combined_result.wind_assessment.total_energy_kwh} kWh\n"
+                f"- Capacity Factor: {combined_result.wind_assessment.capacity_factor_percentage}%\n"
+            )
+            return ChatResponse(response=response)
+        except Exception as e:
+            logger.error(f"Failed to perform assessment: {e}")
+            return ChatResponse(response="Error: Unable to perform energy assessment. Please try again.")
+    else:
+        # If it's not an energy calculation command, forward to OpenAI for chat response
+        headers = {
+            "Authorization": f"Bearer {OPENAI_API_KEY}",
+            "Content-Type": "application/json"
+        }
+        data = {
+            "model": "gpt-3.5-turbo",
+            "messages": [{"role": "user", "content": request.message}]
+        }
+
+        try:
+            openai_response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=data)
+            openai_response.raise_for_status()
+            assistant_message = openai_response.json()["choices"][0]["message"]["content"]
+            return ChatResponse(response=assistant_message)
+        except requests.RequestException as e:
+            logger.error(f"Error communicating with OpenAI API: {e}")
+            raise HTTPException(status_code=500, detail="Error communicating with OpenAI API")
+
+async def _should_run_energy_assessment(user_message: str) -> bool:
+    # Use the model to determine if we should run the energy assessment functions
+    prompt = f"Given the user's message '{user_message}', should we run the energy assessment functions? Respond with either 'yes' or 'no'."
+    response = await _call_openai(prompt)
+    return response.lower().strip() == "yes"
+
+async def _call_openai(prompt: str) -> str:
+    headers = {
+        "Authorization": f"Bearer {OPENAI_API_KEY}",
+        "Content-Type": "application/json"
+    }
+    data = {
+        "model": "gpt-3.5-turbo",
+        "messages": [{"role": "user", "content": prompt}]
+    }
+
+    try:
+        openai_response = await requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=data)
+        openai_response.raise_for_status()
+        return openai_response.json()["choices"][0]["message"]["content"]
+    except requests.RequestException as e:
+        logger.error(f"Error communicating with OpenAI API: {e}")
+        raise HTTPException(status_code=500, detail="Error communicating with OpenAI API")
+
+
+@app.post("/combined_assessment", response_model=CombinedAssessmentResponse)
+async def combined_assessment(request: CombinedAssessmentRequest):
+    try:
+        # Step 1: Fetch coordinates for the city
+        coordinates_response = await get_coordinates(LocationRequest(city_name=request.city_name))
+        lat, lon = coordinates_response.latitude, coordinates_response.longitude
+
+        # Step 2: Perform solar assessment
+        solar_assessment_request = SolarAssessmentRequest(latitude=lat, longitude=lon)
+        solar_result = calculate_solar_potential(solar_assessment_request)
+
+        # Step 3: Perform wind assessment
+        wind_assessment_request = WindDataRequest(lat=lat, lon=lon, height=100, date_from="2019-01-01", date_to="2019-01-31")
+        wind_result = process_wind_data(wind_assessment_request)
+
+        # Step 4: Return combined results
+        return CombinedAssessmentResponse(
+            solar_assessment=solar_result,
+            wind_assessment=wind_result
+        )
+
+    except HTTPException as he:
+        logger.error(f"HTTPException occurred: {he.detail}")
+        raise he
+    except Exception as e:
+        logger.error(f"Error in combined assessment: {str(e)}")
+        raise HTTPException(status_code=500, detail="Error in combined assessment")
