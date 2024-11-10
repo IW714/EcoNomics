@@ -6,7 +6,7 @@ export default function ThemeToggle() {
   const { isDarkMode, toggleTheme } = useContext(ThemeContext);
 
   return (
-    <div className="flex items-center bg-background">
+    <div className="flex items-center bg-background text-primary">
       <span className="mr-2 text-sm">{isDarkMode ? 'Dark' : 'Light'} Mode</span>
       <Switch checked={isDarkMode} onCheckedChange={toggleTheme} />
     </div>

@@ -1,11 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { ChatBubble, ChatBubbleMessage } from '@/components/ui/chat/chat-bubble';
+import { ChatBubble, ChatBubbleMessage, ChatBubbleAction } from '@/components/ui/chat/chat-bubble';
 import { ChatInput } from '@/components/ui/chat/chat-input';
-import { CornerDownLeft } from 'lucide-react';
+import { ChatMessageList } from '@/components/ui/chat/chat-message-list';
+import { CornerDownLeft, CopyIcon, RefreshCcw } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { SolarAssessmentResponse, WindDataResponse } from '@/models/types';
+import ReactMarkdown from 'react-markdown';
 
 type Message = {
   id: number;
@@ -23,15 +25,24 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ onCombinedAssessmentResult }) =
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
-  const sessionId = 'unique-session-id'; // TODO: With Auth, Generate or retrieve a unique session ID per user/session
+  const sessionId = 'unique-session-id';
 
   useEffect(() => {
-    messagesContainerRef.current?.scrollTo(0, messagesContainerRef.current.scrollHeight);
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+    }
   }, [messages]);
 
-  const addMessage = (role: 'user' | 'assistant', text: string) => {
-    const newMessage = { id: Date.now(), role, message: text };
+  const addMessage = (role: 'user' | 'assistant', text: string, loading: boolean = false) => {
+    const newMessage = { id: Date.now(), role, message: text, isLoading: loading };
     setMessages(prev => [...prev, newMessage]);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage(e as unknown as React.FormEvent<HTMLFormElement>);
+    }
   };
 
   const handleSendMessage = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -42,6 +53,15 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ onCombinedAssessmentResult }) =
     addMessage('user', userInput);
     setInput('');
     setIsLoading(true);
+    
+    // Add a loading message
+    const loadingMessageId = Date.now();
+    setMessages(prev => [...prev, {
+      id: loadingMessageId,
+      role: 'assistant',
+      message: '...',
+      isLoading: true
+    }]);
 
     try {
       const response = await fetch('http://127.0.0.1:8000/chat', {
@@ -51,63 +71,122 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ onCombinedAssessmentResult }) =
       });
 
       const data = await response.json();
-      if (response.ok) {
-        addMessage('assistant', data.response);
+      
+      // Remove loading message and add actual response
+      setMessages(prev => {
+        const filtered = prev.filter(msg => msg.id !== loadingMessageId);
+        return [...filtered, {
+          id: Date.now(),
+          role: 'assistant',
+          message: data.response,
+          isLoading: false
+        }];
+      });
 
-        if (data.solar_assessment && data.wind_assessment) {
-          onCombinedAssessmentResult(data.solar_assessment, data.wind_assessment);
-        }
-      } else {
-        addMessage('assistant', 'Error: Unable to fetch response. Please try again later.');
+      if (data.solar_assessment && data.wind_assessment) {
+        onCombinedAssessmentResult(data.solar_assessment, data.wind_assessment);
       }
     } catch (error) {
-      addMessage('assistant', 'Error: Unable to fetch response. Please try again later.');
+      setMessages(prev => {
+        const filtered = prev.filter(msg => msg.id !== loadingMessageId);
+        return [...filtered, {
+          id: Date.now(),
+          role: 'assistant',
+          message: 'Error: Unable to fetch response. Please try again later.',
+          isLoading: false
+        }];
+      });
       console.error(error);
     } finally {
       setIsLoading(false);
     }
   };
 
+  const copyMessage = (message: string) => {
+    navigator.clipboard.writeText(message);
+  };
+
   return (
-    <div className="w-full lg:w-[28rem] h-full shadow-lg rounded-lg overflow-hidden bg-white border">
-      <div className="relative flex flex-col h-full p-2">
-        <div ref={messagesContainerRef} className="overflow-y-auto flex-grow max-h-[20rem] p-2">
+    <div className="flex flex-col h-[700px] w-full rounded-xl bg-muted/20 dark:bg-muted/40 p-4">
+      <div 
+        ref={messagesContainerRef}
+        className="flex-1 overflow-y-auto"
+      >
+        <ChatMessageList>
           <AnimatePresence>
             {messages.map((message) => (
               <motion.div
                 key={message.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                transition={{ duration: 0.2 }}
-                className="flex flex-col gap-2"
+                // ... motion settings ...
+                className="flex flex-col gap-2 p-4"
               >
                 <ChatBubble variant={message.role === 'assistant' ? 'received' : 'sent'}>
                   <Avatar>
-                    <AvatarImage src={message.role === 'assistant' ? '/bot-avatar.png' : '/user-avatar.png'} />
+                    <AvatarImage 
+                      src={message.role === 'assistant' ? '/bot-avatar.png' : '/user-avatar.png'} 
+                      className={message.role === 'assistant' ? "dark:invert" : ""}
+                    />
                     <AvatarFallback>{message.role === 'assistant' ? '🤖' : 'U'}</AvatarFallback>
                   </Avatar>
                   <ChatBubbleMessage isLoading={message.isLoading}>
-                    {message.message}
+                    {message.isLoading ? (
+                      <div className="flex items-center space-x-2">
+                        <div className="animate-pulse">Thinking...</div>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="prose dark:prose-invert max-w-none break-words">
+                          <ReactMarkdown>{message.message}</ReactMarkdown>
+                        </div>
+                        {message.role === 'assistant' && (
+                          <div className="flex items-center mt-1.5 gap-1">
+                            <ChatBubbleAction
+                              variant="outline"
+                              className="size-6"
+                              icon={<CopyIcon className="size-3" />}
+                              onClick={() => copyMessage(message.message)}
+                            />
+                            <ChatBubbleAction
+                              variant="outline"
+                              className="size-6"
+                              icon={<RefreshCcw className="size-3" />}
+                              onClick={() => {/* TODO: Implement retry logic */}}
+                            />
+                          </div>
+                        )}
+                      </>
+                    )}
                   </ChatBubbleMessage>
                 </ChatBubble>
               </motion.div>
             ))}
           </AnimatePresence>
-        </div>
-        
-        <form onSubmit={handleSendMessage} className="flex items-center space-x-2 p-2 border-t">
+        </ChatMessageList>
+      </div>
+
+      <form 
+        onSubmit={handleSendMessage} 
+        className="mt-4"
+      >
+        <div className="relative flex items-center">
           <ChatInput
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Type a message..."
-            className="flex-1 p-1"
+            onKeyDown={handleKeyDown}
+            placeholder="Type your message..."
+            className="flex-1 min-h-12 resize-none rounded-lg bg-background border p-3 shadow-none focus-visible:ring-0"
           />
-          <Button type="submit" disabled={!input || isLoading} size="sm">
-            <CornerDownLeft />
+          <Button
+            disabled={!input || isLoading}
+            type="submit"
+            size="sm"
+            className="ml-2 gap-1.5"
+          >
+            Send Message
+            <CornerDownLeft className="size-3.5" />
           </Button>
-        </form>
-      </div>
+        </div>
+      </form>
     </div>
   );
 };

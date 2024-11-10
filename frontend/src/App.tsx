@@ -6,17 +6,17 @@ import './App.css'
 
 function App() {
   return (
-    <div>
-      {/* Header or Navbar */}
-      <header className="flex justify-between items-center p-4">
-        {/* Other header content */}
+    <div className="min-h-screen bg-background flex flex-col">
+      {/* Header or Navbar would go here */}
+      <header className="flex justify-between items-center p-4 bg-background">
         <ThemeToggle />
       </header>
-      {/* Routes */}
-      <Routes>
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/home" element={<HomePage />} />
-      </Routes>
+      <main className="flex-1">
+        <Routes>
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/home" element={<HomePage />} />
+        </Routes>
+      </main>
     </div>
   );
 }
