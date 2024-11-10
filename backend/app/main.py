@@ -1,5 +1,6 @@
 import math
 import os
+import aiohttp
 import requests
 import logging
 import pandas as pd
@@ -18,7 +19,6 @@ from app.services.wind.fetch.fetch_wind_data import fetch_wind_data
 from app.calculations.wind_calculations import calculate_annual_wind_energy, calculate_wind_cost_savings
 from app.services.wind.calculate.merge_and_calculate_power import calculate_wind_metrics, merge_and_calculate_power
 from app.models.ai import ChatRequest, ChatResponse, CombinedAssessmentRequest, CombinedAssessmentResponse
-import aiohttp
 import ssl
 import certifi
 

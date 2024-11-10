@@ -1,8 +1,9 @@
 import React, { useState, useCallback } from 'react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import ChatWidget from './ChatWidget';
 import { SolarAssessmentResponse, WindDataResponse, CombinedAssessmentResponse } from '@/models/types';
-import { getCombinedAssessment } from '@/services/apiService';
+import { getCombinedAssessment, calculateSolarPotential, processWindData, getCoordinates} from '@/services/apiService';
 import { Input } from '@/components/ui/input';
 
 const HomePage: React.FC = () => {
@@ -11,6 +12,8 @@ const HomePage: React.FC = () => {
   const [longitude, setLongitude] = useState(0);
   const [solarResult, setSolarResult] = useState<SolarAssessmentResponse | null>(null);
   const [windResult, setWindResult] = useState<WindDataResponse | null>(null);
+  const [solarError, setSolarError] = useState("");
+  const [windError, setWindError] = useState("");
   const [error, setError] = useState<string>('');
   const [loading, setLoading] = useState(false);
 
@@ -40,8 +43,104 @@ const HomePage: React.FC = () => {
     }
   }, []);
 
+  const getCoords = async () => {
+    if (cityName.trim()) {
+      try {
+        const coords = await getCoordinates({ city_name: cityName.trim() });
+        setLatitude(coords.latitude);
+        setLongitude(coords.longitude);
+        return coords;
+      } catch (err) {
+        console.error("Failed to fetch coordinates:", err);
+        throw new Error("Failed to get coordinates for the provided city name");
+      }
+    }
+    return null;
+  };
+
+  const validateCoordinates = (lat: number, lon: number): boolean => {
+    return !isNaN(lat) && !isNaN(lon) && 
+           lat >= -90 && lat <= 90 && 
+           lon >= -180 && lon <= 180;
+  };
+
+  const handleSolarSubmit = async () => {
+    setSolarError("");
+    setLoading(true);
+
+    try {
+      let lat = Number(latitude);
+      let lon = Number(longitude);
+
+      if (cityName.trim()) {
+        const coords = await getCoords();
+        if (coords) {
+          lat = coords.latitude;
+          lon = coords.longitude;
+        }
+      }
+
+      if (!validateCoordinates(lat, lon)) {
+        throw new Error("Please enter valid coordinates or a city name");
+      }
+
+      const data = await calculateSolarPotential({ 
+        latitude: lat, 
+        longitude: lon 
+      });
+      setSolarResult(data);
+    } catch (err) {
+      setSolarError(err instanceof Error ? err.message : "Failed to calculate solar potential");
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleWindSubmit = async () => {
+    setWindError("");
+    setLoading(true);
+    setWindResult(null);
+    
+    try {
+      let lat = Number(latitude);
+      let lon = Number(longitude);
+      
+      if (cityName.trim()) {
+        const coords = await getCoords();
+        if (coords) {
+          lat = coords.latitude;
+          lon = coords.longitude;
+        }
+      }
+
+      if (!validateCoordinates(lat, lon)) {
+        throw new Error("Please enter valid coordinates or a city name");
+      }
+
+      const data = await processWindData(
+        lat,
+        lon,
+        100,
+        "2019-01-01",
+        "2019-01-31"
+      );
+      
+      setWindResult(data);
+    } catch (err) {
+      if (err instanceof Error) {
+        setWindError(err.message);
+      } else {
+        setWindError("Failed to fetch wind data");
+      }
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
-    <div className="container mx-auto p-4 flex flex-col lg:flex-row gap-8 justify-center">
+    <div className="bg-background min-h-screen container mx-auto p-4 flex flex-col lg:flex-row gap-8 justify-center">
       <div className="lg:w-1/3">
         <Card className="w-full shadow-md rounded-lg">
           <CardHeader>
@@ -106,12 +205,30 @@ const HomePage: React.FC = () => {
             </div>
           </CardContent>
           <CardFooter className="flex flex-col space-y-4">
-            {error && (
-              <div className="w-full p-4 bg-red-50 border border-red-200 rounded-md">
-                <p className="text-red-600">{error}</p>
-              </div>
-            )}
-          </CardFooter>
+          <div className="flex space-x-4 w-full">
+            <Button 
+              onClick={handleSolarSubmit} 
+              disabled={loading}
+              className="flex-1"
+            >
+              {loading ? "Calculating..." : "Calculate Solar Potential"}
+            </Button>
+            <Button 
+              onClick={handleWindSubmit} 
+              disabled={loading}
+              className="flex-1"
+            >
+              {loading ? "Calculating..." : "Calculate Wind Potential"}
+            </Button>
+          </div>
+
+          {(solarError || windError) && (
+            <div className="w-full p-4 bg-red-50 border border-red-200 rounded-md">
+              {solarError && <p className="text-red-600">{solarError}</p>}
+              {windError && <p className="text-red-600">{windError}</p>}
+            </div>
+          )}
+        </CardFooter>
 
           {/* Display Results */}
           {(solarResult || windResult) && (
