@@ -13,16 +13,16 @@ const LandingPage = () => {
       <div className="fixed inset-0 bg-green-100" />
       
       {/* Main content wrapper */}
-      <div className="relative min-h-screen">
+      <div className="relative h-screen overflow-hidden">
         <Gradient />
-        <div className="relative z-10 min-h-screen flex items-center">
+        <div className="relative z-10 h-screen flex items-center">
           {/* Content container */}
-          <div className="w-full max-w-6xl px-6 mx-auto">
-            <div className="flex flex-col lg:flex-row gap-12">
+          <div className="w-full max-w-[1500px] px-12 mx-auto">
+            <div className="flex flex-col lg:flex-row gap-24">
               {/* Left side content */}
-              <div className="flex-1 flex flex-col justify-center">
-                <h1 className="text-5xl font-bold text-gray-800 mb-6">
-                  Make sustainable choices.
+              <div className="flex-1 flex flex-col justify-center mb-36">
+                <h1 className="text-6xl font-bold text-gray-800 mb-6">
+                  <span className="whitespace-nowrap">Make sustainable choices.</span>
                   <br />
                   <span className="text-[#02B5AB]">Save money.</span>
                 </h1>
