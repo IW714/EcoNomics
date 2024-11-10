@@ -11,6 +11,8 @@ export interface SolarAssessmentResponse {
   export interface WindDataResponse {
     total_energy_kwh: number;
     capacity_factor_percentage: number;
+    cost_savings: number; 
     message: string;
-  }
+}
+
   

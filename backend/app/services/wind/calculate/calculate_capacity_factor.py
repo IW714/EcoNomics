@@ -1,77 +1,41 @@
-import sys
-import pandas as pd
-import os
-
-def calculate_capacity_factor(df, rated_power):
+def calculate_capacity_factor(df, rated_power=10):
     """
     Calculate the capacity factor of the wind turbine.
-
+    
     Parameters:
-    - df (DataFrame): DataFrame containing the 'energy_kwh' column.
-    - rated_power (float): Rated power of the turbine in kW.
-
+    - df (DataFrame): DataFrame containing the 'energy_kwh' column
+    - rated_power (float): Rated power of the turbine in kW (default 10kW)
+    
     Returns:
-    - capacity_factor (float): Capacity factor as a percentage.
+    - capacity_factor (float): Capacity factor as a percentage
     """
-    # Calculate the total number of hours represented by the data
-    # Assumes each row in the DataFrame represents one hour
-    total_hours = df.shape[0]
+    # Calculate annual energy from monthly data
+    annual_energy = df['energy_kwh'].sum() * 12  # Convert monthly to annual
+    
+    # Calculate theoretical maximum annual energy
+    max_annual_energy = rated_power * 8760  # 8760 hours in a year
+    
+    # Calculate capacity factor
+    capacity_factor = (annual_energy / max_annual_energy) * 100
+    
+    # Sanity check - cap at realistic maximum
+    MAX_CAPACITY_FACTOR = 35.0
+    return min(capacity_factor, MAX_CAPACITY_FACTOR)
 
-    # Calculate the maximum possible energy output if the turbine operated
-    # at full rated power for the entire period (total_hours)
-    total_possible_energy = rated_power * total_hours  # in kWh
-
-    # Calculate the actual energy generated over the period by summing the 'energy_kwh' column
-    actual_energy_generated = df['energy_kwh'].sum()
-
-    # Calculate the capacity factor as a percentage
-    # Capacity Factor = (Actual Energy Generated / Maximum Possible Energy) * 100
-    capacity_factor = (actual_energy_generated / total_possible_energy) * 100
-    return capacity_factor
-
-def calculate_capacity_factor_from_csv(merged_power_file='data/merged_power_data.csv',
-                                      rated_power=2000,
-                                      output_file='data/capacity_factor.txt'):
+def calculate_wind_cost_savings(total_energy_kwh: float, energy_price: float) -> float:
     """
-    Calculate the capacity factor from the merged power data and save it to a file.
-
+    Calculate annual cost savings from wind energy.
+    
     Parameters:
-    - merged_power_file (str): Path to the CSV file containing merged power data.
-    - rated_power (float): Rated power of the turbine in kW.
-    - output_file (str): Path to save the capacity factor.
+    - total_energy_kwh (float): Annual energy production in kWh
+    - energy_price (float): Energy price in USD/kWh (typically 0.10-0.15)
+    
+    Returns:
+    - annual_savings (float): Annual cost savings in USD
     """
-    if not os.path.exists(merged_power_file):
-        print(f"Error: Merged power data file '{merged_power_file}' not found.")
-        raise FileNotFoundError(f"Merged power data file '{merged_power_file}' not found.")
-
-    try:
-        df = pd.read_csv(merged_power_file, parse_dates=['datetime'])
-    except Exception as e:
-        print(f"Error: Failed to read merged power data CSV: {e}")
-        raise
-
-    capacity_factor = calculate_capacity_factor(df, rated_power)
-    print(f"Capacity Factor: {capacity_factor:.2f}%")
-
-    # Save the capacity factor to a file
-    try:
-        os.makedirs(os.path.dirname(output_file), exist_ok=True)
-        with open(output_file, 'w') as f:
-            f.write(f"Capacity Factor: {capacity_factor:.2f}%\n")
-        print(f"Capacity factor successfully saved to '{output_file}'.")
-    except Exception as e:
-        print(f"Failed to save capacity factor to file: {e}")
-        raise
-
-    return capacity_factor  # Ensure the function returns the calculated value
-
-def main():
-    merged_power_file = 'data/merged_power_data.csv'
-    rated_power = 2000  # kW, adjust as needed
-    output_file = 'data/capacity_factor.txt'
-
-    calculate_capacity_factor_from_csv(merged_power_file, rated_power, output_file)
-    print("Capacity Factor Calculation Script Completed.")
-
-if __name__ == "__main__":
-    main()
+    # Validate energy price is in reasonable range
+    MIN_RATE = 0.08
+    MAX_RATE = 0.20
+    validated_rate = min(max(energy_price, MIN_RATE), MAX_RATE)
+    
+    return total_energy_kwh * validated_rate

@@ -22,7 +22,10 @@ def calculate_panel_area(dc_annual: float, solrad_annual: float, panel_efficienc
     if annual_solar_radiation <= 0:
         raise ValueError("Annual solar radiation must be greater than 0.")
     
-    panel_area = dc_annual / (annual_solar_radiation * panel_efficiency)
+    # Handle dc_annual if it's a list
+    dc_annual_value = dc_annual[0] if isinstance(dc_annual, (list, tuple)) else dc_annual
+    
+    panel_area = float(dc_annual_value) / (annual_solar_radiation * panel_efficiency)
     logger.debug(f"Calculated Panel Area: {panel_area} m²")
     
     return panel_area
@@ -35,7 +38,9 @@ def calculate_cost_savings(ac_annual: float, energy_price: float) -> float:
     :param energy_price: Energy price in USD/kWh
     :return: Annual cost savings in USD
     """
-    return ac_annual * energy_price
+    # Handle ac_annual if it's a list
+    ac_annual_value = ac_annual[0] if isinstance(ac_annual, (list, tuple)) else ac_annual
+    return float(ac_annual_value) * float(energy_price)
 
 def calculate_roi(initial_cost: float, annual_savings: float) -> float:
     """
@@ -47,7 +52,7 @@ def calculate_roi(initial_cost: float, annual_savings: float) -> float:
     """
     if annual_savings <= 0:
         raise ValueError("Annual savings must be greater than 0.")
-    return initial_cost / annual_savings
+    return float(initial_cost) / float(annual_savings)
 
 def calculate_co2_reduction(ac_annual: float, emission_factor: float) -> float:
     """
@@ -57,4 +62,6 @@ def calculate_co2_reduction(ac_annual: float, emission_factor: float) -> float:
     :param emission_factor: CO2 emission factor in kg CO2/kWh
     :return: Annual CO2 reduction in kg
     """
-    return ac_annual * emission_factor  # in kg
+    # Handle ac_annual if it's a list
+    ac_annual_value = ac_annual[0] if isinstance(ac_annual, (list, tuple)) else ac_annual
+    return float(ac_annual_value) * float(emission_factor)  # in kg

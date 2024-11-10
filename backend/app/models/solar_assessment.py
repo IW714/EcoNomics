@@ -18,8 +18,9 @@ class UtilityRatesRequest(BaseModel):
     location: Location
 
 class SolarAssessmentRequest(BaseModel):
-    latitude: float = Field(..., example=37.7749)
-    longitude: float = Field(..., example=-122.4194)
+    city_name: Optional[str] = Field(None, description="City name for geolocation")
+    latitude: Optional[float] = Field(None, description="Latitude of the location")
+    longitude: Optional[float] = Field(None, description="Longitude of the location")
 
 class SolarAssessmentResponse(BaseModel):
     ac_annual: float = Field(..., description="Annual AC system output (kWhac)")
@@ -29,3 +30,6 @@ class SolarAssessmentResponse(BaseModel):
     annual_cost_savings: float = Field(..., description="Annual cost savings (USD)")
     roi_years: float = Field(..., description="Return on Investment (years)")
     co2_reduction: float = Field(..., description="Annual CO2 reduction (kg)")
+
+class LocationRequest(BaseModel):
+    city_name: str
