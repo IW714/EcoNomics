@@ -183,28 +183,77 @@ const HomePage = () => {
             )}
           </CardFooter>
 
-          {/* Display Results */}
-          {(solarResult || windResult) && (
-            <div className="p-6 border-t border-gray-200">
-              {solarResult && (
-                <div className="mb-6">
-                  <h3 className="text-lg font-semibold mb-4">Solar Assessment Results</h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    {/* Solar results here */}
+         {/* Display Results */}
+            {(solarResult || windResult) && (
+              <div className="p-6 border-t border-gray-200">
+                
+                {/* Solar Results */}
+                {solarResult && (
+                  <div className="mb-6">
+                    <h3 className="text-lg font-semibold mb-4">Solar Assessment Results</h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="p-4 bg-gray-50 rounded-md">
+                        <p className="text-sm font-medium text-gray-600">Annual AC Output</p>
+                        <p className="text-lg">{solarResult.ac_annual.toFixed(2)} kWh</p>
+                      </div>
+                      <div className="p-4 bg-gray-50 rounded-md">
+                        <p className="text-sm font-medium text-gray-600">Solar Radiation</p>
+                        <p className="text-lg">{solarResult.solrad_annual.toFixed(2)} kWh/m²/day</p>
+                      </div>
+                      <div className="p-4 bg-gray-50 rounded-md">
+                        <p className="text-sm font-medium text-gray-600">Capacity Factor</p>
+                        <p className="text-lg">{(solarResult.capacity_factor * 100).toFixed(1)}%</p>
+                      </div>
+                      <div className="p-4 bg-gray-50 rounded-md">
+                        <p className="text-sm font-medium text-gray-600">Panel Area</p>
+                        <p className="text-lg">{solarResult.panel_area.toFixed(2)} m²</p>
+                      </div>
+                      <div className="p-4 bg-gray-50 rounded-md">
+                        <p className="text-sm font-medium text-gray-600">Annual Savings</p>
+                        <p className="text-lg">${solarResult.annual_cost_savings.toFixed(2)}</p>
+                      </div>
+                      <div className="p-4 bg-gray-50 rounded-md">
+                        <p className="text-sm font-medium text-gray-600">ROI Period</p>
+                        <p className="text-lg">{solarResult.roi_years.toFixed(1)} years</p>
+                      </div>
+                      <div className="p-4 bg-gray-50 rounded-md col-span-2">
+                        <p className="text-sm font-medium text-gray-600">CO₂ Reduction</p>
+                        <p className="text-lg">{solarResult.co2_reduction.toFixed(2)} kg/year</p>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              {windResult && (
-                <div>
-                  <h3 className="text-lg font-semibold mb-4">Wind Assessment Results</h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    {/* Wind results here */}
+                {/* Wind Results */}
+                {windResult && (
+                  <div>
+                    <h3 className="text-lg font-semibold mb-4">Wind Assessment Results</h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="p-4 bg-gray-50 rounded-md">
+                        <p className="text-sm font-medium text-gray-600">Annual Energy Output</p>
+                        <p className="text-lg">{windResult.total_energy_kwh.toFixed(2)} kWh</p>
+                      </div>
+                      <div className="p-4 bg-gray-50 rounded-md">
+                        <p className="text-sm font-medium text-gray-600">Capacity Factor</p>
+                        <p className="text-lg">{windResult.capacity_factor_percentage.toFixed(1)}%</p>
+                      </div>
+                      <div className="p-4 bg-gray-50 rounded-md">
+                        <p className="text-sm font-medium text-gray-600">Annual Savings</p>
+                        <p className="text-lg">${windResult.cost_savings.toFixed(2)}</p>
+                      </div>
+                      <div className="p-4 bg-gray-50 rounded-md">
+                        <p className="text-sm font-medium text-gray-600">Payback Period</p>
+                        <p className="text-lg">{(30000 / windResult.cost_savings).toFixed(1)} years</p>
+                      </div>
+                      <div className="p-4 bg-gray-50 rounded-md col-span-2">
+                        <p className="text-sm font-medium text-gray-600">CO₂ Reduction</p>
+                        <p className="text-lg">{(windResult.total_energy_kwh * 0.131).toFixed(2)} kg/year</p>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              )}
-            </div>
-          )}
+                )}
+              </div>
+            )}
         </Card>
       </div>
     </div>
