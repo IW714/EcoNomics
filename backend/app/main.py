@@ -19,6 +19,9 @@ from app.services.wind.fetch.fetch_wind_data import fetch_wind_data
 from app.calculations.wind_calculations import calculate_annual_wind_energy, calculate_wind_cost_savings
 from app.services.wind.calculate.merge_and_calculate_power import calculate_wind_metrics, merge_and_calculate_power
 from app.models.ai import ChatRequest, ChatResponse, CombinedAssessmentRequest, CombinedAssessmentResponse
+from app.prompts.handlers import PromptHandler
+
+import aiohttp
 import ssl
 import certifi
 
@@ -207,14 +210,30 @@ def process_wind_data(request: WindDataRequest):
         logger.error(f"Error in wind calculations: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-async def _call_openai(prompt: str) -> str:
+
+async def _call_openai(prompt: str, include_system: bool = False) -> str:
+    prompt_handler = PromptHandler()
+    
     headers = {
         "Authorization": f"Bearer {OPENAI_API_KEY}",
         "Content-Type": "application/json"
     }
+    
+    messages = []
+    if include_system:
+        messages.append({
+            "role": "system",
+            "content": prompt_handler.config.get_system_prompt()
+        })
+    
+    messages.append({
+        "role": "user",
+        "content": prompt
+    })
+    
     data = {
         "model": "gpt-3.5-turbo",
-        "messages": [{"role": "user", "content": prompt}]
+        "messages": messages
     }
 
     try:
@@ -232,72 +251,40 @@ async def _call_openai(prompt: str) -> str:
     
 @app.post("/chat", response_model=ChatResponse)
 async def chat_with_openai(request: ChatRequest):
-    user_message = request.message.lower().strip()
-
-    # Ask the model if we should run the energy assessment functions
-    try:
-        should_run_assessment = await _should_run_energy_assessment(user_message)
-    except Exception as e:
-        logger.error(f"Error in _should_run_energy_assessment: {e}")
-        return ChatResponse(response="Error: Unable to determine if energy assessment should be run. Please try again later.")
-
+    prompt_handler = PromptHandler()
+    user_message = request.message.strip()
+    
+    should_run_assessment, location = await prompt_handler.check_assessment_and_location(user_message)
+    
     if should_run_assessment:
         try:
-            # Run the combined assessment
-            city_name = user_message.replace("calculate energy in", "").strip()
-            combined_result = await combined_assessment(CombinedAssessmentRequest(city_name=city_name))
-
-            # Format the response with detailed analysis
-            solar_assessment = combined_result.solar_assessment
-            wind_assessment = combined_result.wind_assessment
-
-            # Solar assessment analysis
-            solar_analysis = (
-                f"Solar Assessment for {city_name}:\n"
-                f"- Annual AC Output: {solar_assessment.ac_annual:.2f} kWh\n"
-                f"- Solar Radiation: {solar_assessment.solrad_annual:.2f} kWh/m²/day\n"
-                f"- Capacity Factor: {solar_assessment.capacity_factor * 100:.2f}%\n"
-                f"- Estimated Panel Area: {solar_assessment.panel_area:.2f} m²\n"
-                f"- Estimated Annual Cost Savings: ${solar_assessment.annual_cost_savings:.2f}\n"
-                f"- Estimated Payback Period: {solar_assessment.roi_years:.2f} years\n"
-                f"- Estimated CO2 Reduction: {solar_assessment.co2_reduction:.2f} kg/year\n"
+            if not location:
+                return ChatResponse(
+                    response="I couldn't determine which location you want me to analyze. Can you please specify a city?"
+                )
+                
+            combined_result = await combined_assessment(
+                CombinedAssessmentRequest(city_name=location)
             )
-
-            # Wind assessment analysis
-            wind_analysis = (
-                f"Wind Assessment for {city_name}:\n"
-                f"- Annual Energy Output: {wind_assessment.total_energy_kwh:.2f} kWh\n"
-                f"- Capacity Factor: {wind_assessment.capacity_factor_percentage:.2f}%\n"
-                f"- Estimated Annual Cost Savings: ${wind_assessment.cost_savings:.2f}\n"
+            
+            prompt = prompt_handler.format_assessment_data(
+                location,
+                combined_result.solar_assessment.dict(),
+                combined_result.wind_assessment.dict()
             )
-
-            if wind_assessment.message:
-                wind_analysis += f"\nNote: {wind_assessment.message}"
-
-            response = (
-                f"Energy assessment for {city_name}:\n\n"
-                f"{solar_analysis}\n\n{wind_analysis}"
-            )
-
+            
+            response = await _call_openai(prompt, include_system=True)
             return ChatResponse(response=response)
-
+            
         except Exception as e:
             logger.error(f"Failed to perform assessment: {e}")
-            return ChatResponse(response="Error: Unable to perform energy assessment. Please try again.")
+            return ChatResponse(
+                response="I encountered an error while performing the energy assessment. Please try again."
+            )
     else:
-        try:
-            assistant_message = await _call_openai(request.message.strip())
-            return ChatResponse(response=assistant_message)
-        except requests.RequestException as e:
-            logger.error(f"Error communicating with OpenAI API: {e}")
-            raise HTTPException(status_code=500, detail="Error communicating with OpenAI API")
-        
-async def _should_run_energy_assessment(user_message: str) -> bool:
-    # Use the model to determine if we should run the energy assessment functions
-    prompt = f"Given the user's message '{user_message}', should we run the energy assessment functions? Respond with either 'yes' or 'no'."
-    response = await _call_openai(prompt)
-    return response.lower().strip() == "yes"
-
+        response = await _call_openai(user_message, include_system=True)
+        return ChatResponse(response=response)
+    
 @app.post("/combined_assessment", response_model=CombinedAssessmentResponse)
 async def combined_assessment(request: CombinedAssessmentRequest):
     try:
