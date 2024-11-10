@@ -1,4 +1,4 @@
-# React Vite Starter with FastAPI Backend
+# ECOnomics
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Python](https://img.shields.io/badge/python-3.9-blue.svg)
@@ -6,7 +6,7 @@
 
 ## 📖 Description
 
-Welcome to the **React Vite Starter with FastAPI Backend** project! This repository serves as a boilerplate for building full-stack applications using ``FastAPI`` for the backend and ``React`` with ``Vite`` and ``Tailwind CSS`` for the frontend. It provides a seamless development environment with efficient tooling, enabling you to focus on building robust features without worrying about initial setup complexities.
+**ECOnomics** is a web application that simplifies the process of evaluating renewable energy options by providing comprehensive assessments that consider both economic and environmental factors. It integrates a FastAPI backend with a React frontend using Vite and Tailwind CSS, offering users an interactive platform to assess the potential of solar and wind energy based on their location.
 
 ## Table of Contents
 
@@ -24,20 +24,26 @@ Welcome to the **React Vite Starter with FastAPI Backend** project! This reposit
 
 ## ✨ Features
 
-- **FastAPI Backend:**
-  - High-performance API endpoints
-  - Automatic interactive API documentation
-  - Easy integration with databases and third-party services
+- **AI-Powered Energy Assessments:**
+  - Provides detailed reports on the potential of solar and wind energy in a specific area.
+  - Utilizes OpenAI's GPT models for intelligent interactions and assessments.
+  - Generates analyses on both economic viability and environmental impact.
 
-- **React Frontend:**
-  - Modern UI with ``Tailwind CSS``
-  - Fast development with ``Vite``
-  - State management and component-based architecture
+- **Custom Calculations:**
+  - Developed unique algorithms to calculate solar and wind potential.
+  - Integrates data from multiple APIs for accurate assessments.
 
-- **Development Tools:**
-  - Virtual environment management with ``venv``
-  - Auto-reloading for both frontend and backend
-  - Environment variable configuration
+- **User-Friendly Interface:**
+  - Modern UI with Tailwind CSS and ShadCN/UI components.
+  - Responsive design suitable for various devices.
+
+- **Backend Integration:**
+  - High-performance API endpoints with FastAPI.
+  - Integration with multiple external APIs for data gathering:
+    - ElectricityMap API
+    - NREL API
+    - CDSAPI
+    - OpenCage Geocoding API
 
 ## 🛠️ Tech Stack
 
@@ -45,9 +51,20 @@ Welcome to the **React Vite Starter with FastAPI Backend** project! This reposit
   - [React](https://reactjs.org/)
   - [Vite](https://vitejs.dev/)
   - [Tailwind CSS](https://tailwindcss.com/)
+  - [ShadCN/UI](https://ui.shadcn.com/)
+  - [Custom ShadCN Chat](https://github.com/jakobhoeg/shadcn-chat)
+  - [Framer Motion](https://www.framer.com/motion/)
 - **Backend**
   - [FastAPI](https://fastapi.tiangolo.com/)
   - [Uvicorn](https://www.uvicorn.org/)
+  - [LangChain](https://langchain.com/)
+  - [OpenAI GPT](https://openai.com/)
+- **APIs**
+  - [ElectricityMap API](https://www.electricitymap.org/)
+  - [NREL API](https://developer.nrel.gov/)
+  - [CDSAPI](https://cds.climate.copernicus.eu/api-how-to)
+  - [OpenCage Geocoding API](https://opencagedata.com/api)
+  - [OpenAI API](https://platform.openai.com/docs/overview)
 - **Others**
   - [Python 3.9](https://www.python.org/)
   - [Node.js 16.x](https://nodejs.org/)
@@ -57,17 +74,23 @@ Welcome to the **React Vite Starter with FastAPI Backend** project! This reposit
 
 Before you begin, ensure you have met the following requirements:
 
-- ``Python`` 3.9 or higher installed on your machine
-- ``Node.js`` and ``npm`` installed for frontend development
-- [Git](https://git-scm.com/) for version control
+ **Python** 3.9 or higher installed on your machine
+- **Node.js** and **npm** installed for frontend development
+- **Git** for version control
+- **API Keys** for the external services:
+  - OpenAI API Key
+  - ElectricityMap API Key
+  - NREL API Key
+  - CDSAPI Key
+  - OpenCage Geocoding API Key
 
 ## 🚀 Installation
 
 1. **Clone the Repository:**
 
    ```bash
-   git clone https://github.com/IW714/react-vite-starter.git
-   cd react-vite-starter/backend
+   git clone https://github.com/IW714/economics.git
+   cd economics
    ```
 
 ### Backend Setup
@@ -91,7 +114,7 @@ Before you begin, ensure you have met the following requirements:
 4. **Install Dependencies:**
     ```bash
     pip install --upgrade pip
-    pip install fastapi uvicorn
+    pip install -r requirements.txt
     pip freeze > requirements.txt
     ```
 ### Frontend Setup
