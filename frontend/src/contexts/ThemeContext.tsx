@@ -13,7 +13,6 @@ export const ThemeContext = createContext<ThemeContextType>({
 export const ThemeProvider = ({ children }: { children: ReactNode }) => {
   const [isDarkMode, setIsDarkMode] = useState(false);
 
-  // Check for saved theme preference on mount
   useEffect(() => {
     const storedTheme = localStorage.getItem('theme');
 
@@ -24,6 +23,7 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
       setIsDarkMode(false);
       document.documentElement.classList.remove('dark');
     } else {
+
       // Default to system preference
       const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
       if (prefersDark) {

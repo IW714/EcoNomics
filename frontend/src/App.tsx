@@ -1,7 +1,6 @@
 import { Routes, Route } from 'react-router-dom'
 import LandingPage from './pages/LandingPage'
 import HomePage from './pages/HomePage'
-import ChatbotPage from './pages/ChatWidget'
 import ThemeToggle from './components/ThemeToggle'
 import './App.css'
 
@@ -17,7 +16,6 @@ function App() {
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/home" element={<HomePage />} />
-        <Route path="/chatbot" element={<ChatbotPage />} />
       </Routes>
     </div>
   );

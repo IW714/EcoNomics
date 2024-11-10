@@ -39,7 +39,7 @@ const LandingPage = () => {
                     <img
                       src="/eco_logo_notext.png"
                       alt="ECOnomics Logo"
-                      className="max-w-[100px] max-h-[100px]"
+                      className="max-w-[150px] max-h-[150px]"
                     />
                   </div>
 
@@ -92,12 +92,6 @@ const LandingPage = () => {
                       className="w-full px-6 py-3 text-lg bg-[#02B5AB] text-white hover:bg-[#029990] transition-colors"
                     >
                       Calculate Your Savings
-                    </Button>
-                    <Button
-                      onClick={() => navigate('/chatbot')}
-                      className="w-full px-6 py-3 text-lg border-2 border-[#02B5AB] text-[#02B5AB] bg-transparent hover:bg-[#02B5AB] hover:text-white transition-colors"
-                    >
-                      Chat with AI Assistant
                     </Button>
                   </div>
                 </div>
