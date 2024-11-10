@@ -1,0 +1,35 @@
+# prompts/templates.yaml
+
+templates:
+  energy_assessment: |
+    Please analyze these energy assessment results for {city_name}:
+
+    Solar Assessment:
+    - AC Output: {solar_ac_annual} kWh
+    - Solar Radiation: {solar_radiation} kWh/m²/day
+    - Capacity Factor: {solar_capacity_factor}%
+    - Panel Area: {panel_area} m²
+    - Cost Savings: ${solar_cost_savings}
+    - ROI Years: {roi_years}
+    - CO2 Reduction: {co2_reduction} kg/year
+
+    Wind Assessment:
+    - Energy Output: {wind_energy_output} kWh
+    - Capacity Factor: {wind_capacity_factor}%
+    - Cost Savings: ${wind_cost_savings}
+
+    Provide a detailed analysis including:
+    1. Overall renewable energy potential for the location
+    2. Comparative advantages between solar and wind
+    3. Economic viability and environmental impact
+    4. Specific recommendations based on the data
+
+  general_response: |
+    Based on your expertise in renewable energy, please provide a detailed response to:
+    {user_query}
+
+    Include:
+    1. Relevant technical information
+    2. Practical implications
+    3. Additional context when helpful
+    4. Specific examples where appropriate
